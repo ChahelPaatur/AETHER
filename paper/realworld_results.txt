@@ -1,0 +1,5 @@
+# Results Section Summary
+
+## Real Hardware vs. Simulation Performance
+
+Real hardware testing demonstrated superior FDIR performance compared to simulation. The hardware implementation achieved a Stability Fault Recovery Index (SFRI) of 69.99 across 6,023 operational steps, with perfect detection and recovery metrics (DR=100%, RR=100%, FPR=0.0%). In contrast, simulation studies across 5,000 runs yielded lower performance (SFRI 60.07–74.7

@@ -1,0 +1,113 @@
+CORRECTION — Replace OpenCV Camera Pipeline with Native Raspberry Pi Camera (picamera2)
+
+The current capture_image tool is incorrectly implemented using cv2 (OpenCV), which is not installed and not required on Raspberry Pi. The system already has picamera2 available and should use it instead.
+
+You must completely rewrite the capture_image tool with the following requirements:
+
+1. Remove ALL dependencies on cv2 (OpenCV)
+2. Use picamera2 as the primary camera interface
+3. The tool must:
+   - initialize camera safely (singleton or lazy init)
+   - capture a frame as a NumPy array
+   - save the image to disk (e.g., /tmp/aether_capture.jpg)
+   - return the file path
+
+Implementation requirements:
+
+- Use:
+    from picamera2 import Picamera2
+    import numpy as np
+    from datetime import datetime
+
+- Initialize camera once (avoid re-init every call)
+- Add small warmup delay (~0.5s) before capture
+- Save images with timestamped filenames
+- Ensure camera is released properly on shutdown
+
+Function signature:
+
+capture_image() → returns:
+{
+  "path": "...",
+  "timestamp": "...",
+  "resolution": [width, height]
+}
+
+---
+
+2. ADD CAPABILITY-AWARE TOOL SELECTION
+
+Before planning, the system must check capabilities:
+
+If:
+  cv2 == False AND picamera2 == True
+
+Then:
+  Planner must prioritize capture_image (picamera2 version)
+
+Add a capability routing layer so tools are dynamically selected based on hardware/software availability.
+
+---
+
+3. FIX CorrectionAgent BEHAVIOR
+
+Current issue:
+CorrectionAgent retries same failing tool or installs wrong dependency.
+
+New behavior:
+
+If error contains:
+  "cv2 not installed"
+
+Then:
+  DO NOT attempt pip install
+  Instead:
+    switch to picamera2-based capture_image tool
+
+Add rule:
+
+IF missing dependency AND alternative tool exists:
+    switch tool implementation
+ELSE:
+    attempt install
+
+---
+
+4. ADD FALLBACK PERCEPTION
+
+If capture_image fails:
+
+Fallback chain:
+  detect_motion → measure_brightness → report_surroundings
+
+System must NOT terminate perception pipeline immediately.
+
+---
+
+5. LOGGING (IMPORTANT)
+
+Add logs:
+
+[Camera] Using picamera2 backend
+[Camera] Captured image: /tmp/...
+[Camera] Resolution: 640x480
+
+---
+
+6. OPTIONAL (HIGH VALUE)
+
+Add lightweight object detection WITHOUT OpenCV:
+
+- simple color segmentation
+- brightness thresholding
+- motion detection (frame differencing using NumPy)
+
+---
+
+Ensure:
+- clean modular code
+- no global state conflicts
+- works on Raspberry Pi 4
+- zero OpenCV dependency
+
+Return updated capture_image implementation + any modified planner/correction logic.

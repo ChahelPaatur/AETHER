@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp": 1774650001.96352,
+    "action": "scan_environment",
+    "params": {},
+    "success": true
+  },
+  {
+    "timestamp": 1774650001.9639301,
+    "action": "stop",
+    "params": {},
+    "success": true
+  },
+  {
+    "timestamp": 1774650001.964136,
+    "action": "takeoff",
+    "params": {
+      "altitude": "5"
+    },
+    "success": false
+  }
+]

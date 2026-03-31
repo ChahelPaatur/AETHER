@@ -1,0 +1,17 @@
+{
+  "name": "rover_v1",
+  "actuators": ["wheels", "arm"],
+  "sensors": ["camera", "ultrasonic", "imu", "temperature"],
+  "actions": ["move_forward", "move_backward", "turn_left", "turn_right", "stop", "scan", "emergency_stop", "safe_mode"],
+  "limits": {
+    "max_speed": 1.0,
+    "max_turn_rate": 45,
+    "sensor_range": 5.0
+  },
+  "fault_thresholds": {
+    "imu_drift_limit": 0.15,
+    "battery_critical": 0.20,
+    "temperature_max": 80.0,
+    "bus_voltage_low": 0.65
+  }
+}

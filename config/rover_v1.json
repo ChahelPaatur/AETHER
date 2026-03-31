@@ -1,0 +1,11 @@
+{
+  "name": "rover_v1",
+  "actuators": ["wheels"],
+  "sensors": ["camera", "ultrasonic"],
+  "actions": ["move_forward", "turn", "stop"],
+  "limits": {
+    "max_speed": 1.0,
+    "turn_radius": 0.5,
+    "sensor_range": 5.0
+  }
+}

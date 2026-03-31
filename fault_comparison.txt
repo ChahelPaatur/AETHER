@@ -1,0 +1,17 @@
+# FDIR Performance Summary: Rover_v1 Navigation with IMU Sensor Failures
+
+**Test Configuration:** 5 runs, rover_v1 navigation task under sensor_failure_imu scenario
+
+**Key Results:**
+
+- **Detection & Recovery:** 67.5% detection rate (5.4/8 faults), 100% recovery rate for detected faults
+- **Speed:** Mean Time to Detect (MTTD) = 22.2s; Mean Time to Repair (MTTR) = 1.2s
+- **Stability:** SFRI = 58.36 (moderate stability), low false positive rate (0.004)
+- **Efficiency:** Average 282.6 steps to completion (σ=34.8)
+
+**Notable Variance:**
+- Detection rate ranges 62.5–75% across runs
+- MTTD varies significantly (16–28.4s), suggesting inconsistent fault propagation
+- Adaptation latency highly variable (0.09–2.73s)
+
+**Assessment:** The system demonstrates perfect recovery capability but struggles with consistent fault detection. The moderate SFRI score reflects strong recovery performance offset by incomplete detection coverage.

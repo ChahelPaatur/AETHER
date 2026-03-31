@@ -1,0 +1,11 @@
+{
+  "name": "drone_v1",
+  "actuators": ["thrusters"],
+  "sensors": ["camera", "lidar"],
+  "actions": ["move_forward", "turn", "stop", "hover"],
+  "limits": {
+    "max_speed": 2.0,
+    "max_altitude": 50.0,
+    "sensor_range": 10.0
+  }
+}

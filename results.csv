@@ -1,0 +1,199 @@
+run_id,task,scenario,robot,failure_condition,status,steps,faults_encountered,duration_sec,success
+0,follow target,simple_follow,rover_v1,none,success,21,0,0.001,1
+1,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+2,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+3,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+4,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+5,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+6,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+7,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+8,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+9,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+10,follow target,simple_follow,rover_v1,none,success,21,0,0.0,1
+11,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.009,0
+12,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.007,0
+13,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.007,0
+14,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+15,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+16,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+17,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+18,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+19,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+20,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+21,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+22,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+23,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+24,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.001,1
+25,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+26,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+27,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+28,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+29,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+30,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+31,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+32,follow target,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+33,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+34,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+35,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+36,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+37,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.007,0
+38,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+39,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+40,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+41,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+42,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+43,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.048,0
+44,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.013,0
+45,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+46,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+47,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+48,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+49,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+50,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+51,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+52,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+53,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+54,follow target,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+55,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+56,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.007,0
+57,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+58,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+59,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+60,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+61,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+62,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+63,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+64,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+65,follow target,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+66,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+67,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+68,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+69,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+70,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+71,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+72,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+73,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+74,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+75,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+76,follow target while avoiding obstacles,simple_follow,rover_v1,none,success,21,0,0.0,1
+77,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+78,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+79,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+80,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.005,0
+81,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+82,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+83,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+84,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+85,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+86,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+87,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+88,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+89,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+90,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+91,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+92,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+93,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+94,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.001,1
+95,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+96,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+97,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+98,follow target while avoiding obstacles,obstacle_avoidance,rover_v1,none,success,20,0,0.0,1
+99,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+100,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+101,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+102,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+103,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+104,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+105,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+106,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+107,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+108,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+109,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+110,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+111,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+112,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+113,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+114,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+115,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+116,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+117,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.005,0
+118,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+119,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+120,follow target while avoiding obstacles,sensor_failure,rover_v1,none,timeout,200,191,0.006,0
+121,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+122,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.007,0
+123,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+124,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+125,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+126,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+127,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+128,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+129,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.006,0
+130,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.008,0
+131,follow target while avoiding obstacles,sensor_failure,rover_v1,sensor_failure,timeout,200,191,0.008,0
+132,scan environment,simple_follow,rover_v1,none,success,6,0,0.001,1
+133,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+134,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+135,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+136,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+137,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+138,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+139,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+140,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+141,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+142,scan environment,simple_follow,rover_v1,none,success,6,0,0.0,1
+143,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+144,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+145,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+146,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+147,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+148,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+149,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+150,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+151,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+152,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+153,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+154,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+155,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+156,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+157,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+158,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+159,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+160,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+161,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+162,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+163,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+164,scan environment,obstacle_avoidance,rover_v1,none,success,6,0,0.0,1
+165,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+166,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+167,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+168,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+169,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+170,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+171,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+172,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+173,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+174,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+175,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+176,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+177,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+178,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+179,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+180,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+181,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+182,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+183,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+184,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+185,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+186,scan environment,sensor_failure,rover_v1,none,success,6,0,0.0,1
+187,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+188,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+189,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+190,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+191,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+192,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+193,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+194,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+195,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+196,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1
+197,scan environment,sensor_failure,rover_v1,sensor_failure,success,6,0,0.0,1

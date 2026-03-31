@@ -1,0 +1,17 @@
+{
+  "robot_name": "camera_only",
+  "robot_type": "custom",
+  "robot_purpose": "",
+  "calibrated": true,
+  "calibration_date": "2026-03-31",
+  "motor_map": {},
+  "components": {},
+  "capabilities": [
+    "visual_scan",
+    "detect_color",
+    "report_surroundings",
+    "stop"
+  ],
+  "safety_limits": {},
+  "camera_verified": false
+}

@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.so
+
+# Virtual environments
+aether_env/
+venv/
+env/
+.env
+ENV/
+
+# API keys and secrets
+.env
+*.env
+secrets.json
+config_secrets.json
+
+# Logs and experiment data (too large for git)
+logs/session_*.json
+logs/experiment_*.json
+logs/experiment_*.csv
+logs/stress_*.json
+logs/stress_*.csv
+logs/plots/
+logs/captures/
+logs/corrections.json
+logs/hardware_calls.json
+logs/tool_calls.json
+logs/agent_memory.json
+
+# Keep benchmark files
+!logs/BENCHMARK_*.json
+!logs/BENCHMARK_*.csv
+!logs/REALWORLD_*.json
+
+# ML model weights (large files)
+*.pt
+*.pth
+*.npy
+*.pkl
+weights/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V7
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursor/
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/

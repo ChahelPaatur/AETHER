@@ -1,0 +1,17 @@
+{
+  "agents": {
+    "hive-worker-1774416254175-dxyo": {
+      "agentId": "hive-worker-1774416254175-dxyo",
+      "agentType": "worker",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "role": "worker",
+        "hiveRole": "worker"
+      },
+      "createdAt": "2026-03-25T05:24:14.175Z",
+      "domain": "hive-mind"
+    }
+  }
+}

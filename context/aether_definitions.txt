@@ -1,0 +1,1 @@
+SFRI = Stability Fault Recovery Index. Formula: 35×DR + 25×(1-MTTR/max_steps) + 10×RR - 30×FPR. Developed by Chahel Paatur for spacecraft FDIR research.

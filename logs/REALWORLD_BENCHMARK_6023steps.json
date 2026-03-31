@@ -1,0 +1,10 @@
+{
+  "mode": "realworld",
+  "hardware": "MacBook Pro",
+  "steps": 6023,
+  "faults_detected": 2,
+  "SFRI": 69.99,
+  "detection_rate": 1.0,
+  "recovery_rate": 1.0,
+  "false_positive_rate": 0.0
+}

@@ -1,0 +1,17 @@
+{
+  "name": "drone_v1",
+  "actuators": ["thrusters", "camera_gimbal"],
+  "sensors": ["camera", "lidar", "imu", "temperature"],
+  "actions": ["move_forward", "move_backward", "turn_left", "turn_right", "stop", "scan", "emergency_stop", "safe_mode", "hover"],
+  "limits": {
+    "max_speed": 2.0,
+    "max_altitude": 50.0,
+    "sensor_range": 10.0
+  },
+  "fault_thresholds": {
+    "imu_drift_limit": 0.10,
+    "battery_critical": 0.25,
+    "temperature_max": 70.0,
+    "bus_voltage_low": 0.70
+  }
+}

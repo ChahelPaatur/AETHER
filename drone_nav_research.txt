@@ -1,0 +1,12 @@
+# GPS-Denied Navigation Advances in 2024
+
+**Key Developments:**
+
+Skydio released an enhanced autonomy stack featuring advanced visual-inertial odometry (VIO) capable of reliable operation in GPS-challenged environments.
+
+The text appears to be incomplete, cutting off mid-sentence. From what's provided, the summary highlights:
+
+- **Year:** 2024
+- **Focus:** GPS-denied navigation for autonomous UAVs
+- **Major Player:** Skydio
+- **Techno
