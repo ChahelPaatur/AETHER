@@ -56,6 +56,12 @@ logs/agent_memory.json
 *.pkl
 weights/
 
+/.claude-flow/
+/.hive-mind/
+/.claude/
+/.swarm/
+
+
 # OS files
 .DS_Store
 .DS_Store?
