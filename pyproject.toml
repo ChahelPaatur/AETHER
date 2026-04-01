@@ -20,18 +20,21 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "anthropic>=0.50.0",
-    "numpy>=1.26.0",
+    "numpy>=1.24.0",
     "psutil>=5.9.0",
     "requests>=2.32.0",
-    "flask>=3.0.0",
-    "opencv-python-headless>=4.8.0"
 ]
 
 [project.optional-dependencies]
+full = [
+    "anthropic>=0.50.0",
+    "flask>=3.0.0",
+    "opencv-python-headless>=4.8.0",
+    "matplotlib>=3.7.0",
+]
 pi = ["picamera2", "RPi.GPIO", "gpiozero", "smbus2"]
-drone = ["dronekit", "pymavlink", "pyserial"]
-ml = ["torch", "ultralytics", "scipy", "scikit-learn"]
+drone = ["pymavlink", "pyserial"]
+ml = ["ultralytics", "scipy", "scikit-learn"]
 
 [project.scripts]
 aether = "aether.__main__:main"
@@ -43,4 +46,12 @@ Issues = "https://github.com/ChahelPaatur/AETHER/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["aether*", "core*", "agents*", "adapters*", "simulation*", "faults*", "capabilities*", "actions*"]
+include = ["aether*"]
+
+[tool.setuptools.package-data]
+aether = ["**/*.py"]
+"*" = [
+    "configs/*.json",
+    "context/*.txt",
+    "weights/*.npy",
+]
