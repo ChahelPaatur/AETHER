@@ -1,0 +1,17 @@
+{
+  "robot_name": "camera_only",
+  "robot_type": "custom",
+  "robot_purpose": "visual perception and environment monitoring",
+  "calibrated": true,
+  "calibration_date": "2026-04-01",
+  "motor_map": {},
+  "components": {},
+  "capabilities": [
+    "visual_scan",
+    "detect_color",
+    "report_surroundings",
+    "stop"
+  ],
+  "safety_limits": {},
+  "camera_verified": true
+}

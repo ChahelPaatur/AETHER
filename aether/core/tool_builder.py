@@ -37,10 +37,97 @@ def _err(msg: str) -> Dict:
     return {"success": False, "result": None, "error": msg}
 
 
+# ── Raspberry Pi detection ────────────────────────────────────────────
+
+def _is_raspberry_pi() -> bool:
+    """Detect if running on a Raspberry Pi."""
+    try:
+        with open("/proc/device-tree/model", "r") as f:
+            if "Raspberry Pi" in f.read():
+                return True
+    except (FileNotFoundError, OSError, PermissionError):
+        pass
+    return False
+
+
+_IS_PI = _is_raspberry_pi()
+_ON_PI = _IS_PI  # alias used by other modules
+
+# ── Singleton picamera2 instance — stays open across all captures ─────
+
+_picam_instance = None
+
+
+def _get_picamera():
+    """Return the module-level picamera2 singleton, creating it if needed."""
+    global _picam_instance
+    if _picam_instance is None:
+        from picamera2 import Picamera2
+        _picam_instance = Picamera2()
+        config = _picam_instance.create_still_configuration(
+            main={"size": (1920, 1080), "format": "RGB888"}
+        )
+        _picam_instance.configure(config)
+        _picam_instance.start()
+        time.sleep(0.5)
+    return _picam_instance
+
+
+def _capture_frame_any():
+    """Capture a frame from whatever camera is available.
+
+    Returns (frame_ndarray, backend_name_or_error).
+    On Pi uses the picamera2 singleton; elsewhere tries cv2.
+    """
+    if _ON_PI:
+        try:
+            global _picam_instance
+            picam = _get_picamera()
+            frame = picam.capture_array()
+            return frame[:, :, :3], "picamera2"
+        except Exception as e:
+            # Reset singleton on error so next call retries
+            try:
+                if _picam_instance:
+                    _picam_instance.stop()
+                    _picam_instance.close()
+            except Exception:
+                pass
+            _picam_instance = None
+            return None, f"picamera2 failed: {e}"
+    else:
+        try:
+            import cv2
+            cap = cv2.VideoCapture(0)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                cap.release()
+                if ret:
+                    return frame, "cv2"
+            cap.release()
+        except Exception:
+            pass
+        return None, "no camera available"
+
+
 # ── Camera backend detection ──────────────────────────────────────────
 
 def _detect_camera_backend():
-    """Detect available camera backend: 'cv2', 'picamera2', or None."""
+    """Detect available camera backend: 'picamera2' on Pi, 'cv2' otherwise.
+
+    On Raspberry Pi, cv2.VideoCapture(0) causes V4L2 timeouts, so we
+    skip cv2 entirely and use picamera2 directly.
+    """
+    if _IS_PI:
+        # Pi: use picamera2 ONLY, never attempt cv2.VideoCapture
+        try:
+            from picamera2 import Picamera2
+            return "picamera2", Picamera2
+        except (ImportError, RuntimeError):
+            pass
+        return None, None
+
+    # Non-Pi: prefer cv2
     try:
         import cv2
         return "cv2", cv2
@@ -84,13 +171,15 @@ class CameraTool:
     # ── picamera2 singleton management ────────────────────────────────
 
     def _ensure_picamera(self):
-        """Lazily initialize picamera2 once."""
+        """Lazily initialize picamera2 once with RGB888 config."""
         if self._picam is not None and self._picam_started:
             return None  # already running
         try:
             Picamera2 = self._backend
             self._picam = Picamera2()
-            config = self._picam.create_still_configuration()
+            config = self._picam.create_still_configuration(
+                main={"size": (1920, 1080), "format": "RGB888"}
+            )
             self._picam.configure(config)
             self._picam.start()
             time.sleep(0.5)  # warmup
@@ -112,6 +201,11 @@ class CameraTool:
         return None, "no camera backend available"
 
     def _grab_frame_cv2(self):
+        if _ON_PI:
+            frame, backend = _capture_frame_any()
+            if frame is None:
+                return None, backend
+            return frame, None
         if self._cv2 is None:
             return None, "cv2 not installed"
         if self._cap is None or not self._cap.isOpened():
@@ -135,25 +229,33 @@ class CameraTool:
             return None, f"picamera2 capture failed: {e}"
 
     def _save_frame(self, frame, prefix="frame") -> str:
-        """Save a numpy frame to disk as JPEG. Returns filepath."""
+        """Save a numpy frame to disk as JPEG. Returns filepath.
+
+        Handles RGB→BGR conversion when saving picamera2 frames with cv2,
+        since picamera2 returns RGB and cv2.imwrite expects BGR.
+        """
         out_dir = os.path.join("logs", "captures")
         os.makedirs(out_dir, exist_ok=True)
         ts = int(time.time() * 1000)
         path = os.path.join(out_dir, f"{prefix}_{ts}.jpg")
 
-        if self._cv2 is not None:
-            self._cv2.imwrite(path, frame)
-        else:
-            # Save using PIL if available, otherwise raw numpy
-            try:
+        try:
+            if self._cv2 is not None:
+                # picamera2 returns RGB; cv2.imwrite expects BGR
+                if self._backend_name == "picamera2" and len(frame.shape) == 3:
+                    frame_bgr = frame[:, :, ::-1]
+                    self._cv2.imwrite(path, frame_bgr)
+                else:
+                    self._cv2.imwrite(path, frame)
+            else:
+                # Use PIL (handles RGB natively)
                 from PIL import Image
-                # picamera2 returns RGB, PIL expects RGB
                 img = Image.fromarray(frame)
                 img.save(path, "JPEG")
-            except ImportError:
-                # Last resort: save raw numpy data
-                np.save(path.replace(".jpg", ".npy"), frame)
-                path = path.replace(".jpg", ".npy")
+        except Exception:
+            # Last resort: save raw numpy data
+            np.save(path.replace(".jpg", ".npy"), frame)
+            path = path.replace(".jpg", ".npy")
         return path
 
     # ── Public API ────────────────────────────────────────────────────
@@ -321,7 +423,11 @@ class CameraTool:
 # ── YOLOTool ─────────────────────────────────────────────────────────
 
 class YOLOTool:
-    """YOLOv8 object detection. Built when ultralytics is available.
+    """Object detection and scene description.
+
+    When ultralytics is available, uses YOLOv8 for local inference.
+    When ultralytics is missing (e.g. Raspberry Pi), falls back to the
+    Anthropic vision API (claude-sonnet-4-20250514) for scene description.
 
     Methods:
         detect(image_path)      — run inference on an image file
@@ -334,9 +440,11 @@ class YOLOTool:
         self._model = None
         self._ultralytics = None
         self._camera = camera_tool
+        self._has_ultralytics = False
         try:
             import ultralytics
             self._ultralytics = ultralytics
+            self._has_ultralytics = True
         except ImportError:
             pass
 
@@ -354,22 +462,41 @@ class YOLOTool:
             return f"YOLO init failed: {e}"
 
     def _capture_frame(self):
-        """Capture a frame via CameraTool, return (filepath, error)."""
-        cam = self._camera or CameraTool()
-        cap_result = cam.capture_image()
-        if self._camera is None:
+        """Capture a frame via CameraTool, return (filepath, error).
+
+        On Raspberry Pi, creating a second Picamera2 instance causes
+        'Device or resource busy', so we require self._camera to be set.
+        """
+        if self._camera is not None:
+            cap_result = self._camera.capture_image()
+        elif _IS_PI:
+            return None, ("No shared CameraTool — cannot create a second "
+                          "Picamera2 instance on Pi (device busy)")
+        else:
+            cam = CameraTool()
+            cap_result = cam.capture_image()
             cam.close()
         if not cap_result.get("success"):
             return None, cap_result.get("error", "capture failed")
         return cap_result["result"]["filepath"], None
 
-    def detect(self, image_path: str = "") -> Dict:
+    def detect(self, image_path: str = "", **kwargs) -> Dict:
         """Run YOLOv8n on an image. Returns top 10 detections by confidence.
+
+        Parameters
+        ----------
+        image_path : str, optional
+            Path to an image file.  Falls back to camera capture if empty.
 
         Each detection: class_name, confidence, bounding_box {x1,y1,x2,y2},
         center {x, y}.
         """
         try:
+            # Accept image_path / filepath / image from kwargs
+            image_path = (image_path
+                          or kwargs.get("filepath", "")
+                          or kwargs.get("image_path", "")
+                          or kwargs.get("image", ""))
             err = self._ensure_model()
             if err:
                 return _err(err)
@@ -411,7 +538,7 @@ class YOLOTool:
         except Exception as e:
             return _err(str(e))
 
-    def detect_from_camera(self) -> Dict:
+    def detect_from_camera(self, **kwargs) -> Dict:
         """Capture a frame from camera, run YOLO, return detections."""
         try:
             filepath, cap_err = self._capture_frame()
@@ -427,7 +554,7 @@ class YOLOTool:
         except Exception as e:
             return _err(str(e))
 
-    def count_objects(self, class_name: str = "") -> Dict:
+    def count_objects(self, class_name: str = "", **kwargs) -> Dict:
         """Detect objects from camera and count how many match class_name."""
         try:
             det_result = self.detect_from_camera()
@@ -451,10 +578,101 @@ class YOLOTool:
         except Exception as e:
             return _err(str(e))
 
-    def describe_scene(self) -> Dict:
-        """Detect objects from camera, format as natural language string."""
+    def _describe_via_vision_api(self, image_path: str) -> Dict:
+        """Describe a scene using the Anthropic vision API (fallback).
+
+        Used when ultralytics/YOLO is not available (e.g. Raspberry Pi).
+        Sends the image to claude-sonnet-4-20250514 with vision capability.
+        """
+        import base64
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            return _err("ANTHROPIC_API_KEY not set — cannot use vision API")
+        if not image_path or not os.path.exists(image_path):
+            return _err(f"Image not found: {image_path}")
+
+        # Determine media type from extension
+        ext = os.path.splitext(image_path)[1].lower()
+        media_map = {
+            ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".png": "image/png", ".gif": "image/gif",
+            ".webp": "image/webp",
+        }
+        media_type = media_map.get(ext, "image/jpeg")
+
+        with open(image_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": image_data,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": ("Describe what you see in this image in detail, "
+                                 "including any people, objects, text, and their "
+                                 "positions."),
+                    },
+                ],
+            }],
+        )
+        description = message.content[0].text
+        return _ok({
+            "description": description,
+            "backend": "anthropic_vision",
+            "model": "claude-sonnet-4-20250514",
+            "image_path": image_path,
+        })
+
+    def describe_scene(self, image_path: str = "", **kwargs) -> Dict:
+        """Describe everything visible in a scene.
+
+        When ultralytics is available, uses YOLOv8 for local detection.
+        When ultralytics is missing (e.g. Raspberry Pi), falls back to
+        the Anthropic vision API (claude-sonnet-4-20250514).
+
+        Parameters
+        ----------
+        image_path : str, optional
+            Path to an image file.  If provided, that image is used;
+            otherwise a fresh frame is captured from the camera.
+            Also accepted as ``filepath`` or ``image`` in kwargs (the LLM
+            planner often passes the output of capture_image this way).
+        """
         try:
-            det_result = self.detect_from_camera()
+            # Accept image_path / filepath / image from kwargs
+            image_path = (image_path
+                          or kwargs.get("filepath", "")
+                          or kwargs.get("image_path", "")
+                          or kwargs.get("image", ""))
+
+            # ── Fallback: no ultralytics → use Anthropic vision API ──
+            if not self._has_ultralytics:
+                if not image_path or not os.path.exists(image_path):
+                    # Need to capture an image first
+                    filepath, cap_err = self._capture_frame()
+                    if cap_err:
+                        return _err(f"no ultralytics and capture failed: {cap_err}")
+                    image_path = filepath
+                return self._describe_via_vision_api(image_path)
+
+            # ── Primary: YOLOv8 local detection ──────────────────────
+            if image_path and os.path.exists(image_path):
+                det_result = self.detect(image_path)
+            else:
+                det_result = self.detect_from_camera()
             if not det_result.get("success"):
                 return det_result
 
@@ -483,6 +701,7 @@ class YOLOTool:
             description = "I can see: " + ", ".join(parts)
             return _ok({
                 "description": description,
+                "backend": "yolov8",
                 "detections": detections,
                 "object_count": len(detections),
                 "unique_classes": len(groups),
@@ -1136,8 +1355,8 @@ class ToolBuilder:
         if net.get("internet", False):
             tools["network"] = NetworkTool()
 
-        # YOLOTool — if ultralytics available
-        if sw.get("ultralytics", False):
+        # YOLOTool — if ultralytics available OR camera available (vision API fallback)
+        if sw.get("ultralytics", False) or "camera" in tools:
             cam = tools.get("camera")
             tools["yolo"] = YOLOTool(camera_tool=cam)
 

@@ -99,7 +99,25 @@ class RealPerceptionAdapter:
             self._max_steps = scenario.get("max_steps", self._max_steps)
 
         # Open camera
-        if self._cv2 is not None:
+        try:
+            from aether.core.tool_builder import _ON_PI
+        except ImportError:
+            _ON_PI = False
+
+        if _ON_PI:
+            # On Pi, use the shared picamera2 singleton instead of cv2
+            try:
+                from aether.core.tool_builder import _capture_frame_any
+                frame, backend = _capture_frame_any()
+                if frame is None:
+                    print(f"[RealPerception] WARNING: Pi camera failed: {backend}")
+                    self.failed_sensors.append("camera")
+                else:
+                    self._use_pi_capture = True
+            except Exception as e:
+                print(f"[RealPerception] WARNING: Pi camera import failed: {e}")
+                self.failed_sensors.append("camera")
+        elif self._cv2 is not None:
             if self._cap is not None:
                 self._cap.release()
             self._cap = self._cv2.VideoCapture(self._camera_index)

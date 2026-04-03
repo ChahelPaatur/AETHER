@@ -1,10 +1,12 @@
 """
-AETHER v3 — Main entry point.
-Usage:
-  python main.py --task "navigate to target"
-  python main.py --task "follow target while avoiding obstacles" --faults enabled --verbose
-  python main.py --task "scan environment" --render --robot rover_v1
-  python main.py --mode agent
+AETHER v3 — Application entry point (pip-installable).
+
+This module contains all startup logic for AETHER.  It is imported by:
+  - ``aether/__main__.py``  (``python -m aether`` / ``aether`` CLI)
+  - ``main.py``             (source-directory ``python main.py``)
+
+All paths to data files (configs/, context/, weights/) are resolved
+relative to the *project root*, which is auto-detected at import time.
 """
 import argparse
 import json
@@ -18,7 +20,60 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ── Project root detection ──────────────────────────────────────────
+# Works whether running from source (root/main.py) or pip-installed
+# (site-packages/aether/app.py).
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))          # aether/
+_PROJECT_ROOT = os.path.dirname(_THIS_DIR)                      # parent of aether/
+
+# When pip-installed, configs/context/weights live inside the package
+_DATA_CANDIDATES = [_PROJECT_ROOT, _THIS_DIR]
+
+
+def _find_data_dir(subdir: str) -> str:
+    """Locate a data subdirectory (configs, context, weights, logs).
+
+    Checks project root first (source-directory use), then falls back
+    to inside the aether package (pip-installed use).
+    """
+    for base in _DATA_CANDIDATES:
+        path = os.path.join(base, subdir)
+        if os.path.isdir(path):
+            return path
+    # Default: create under project root
+    return os.path.join(_PROJECT_ROOT, subdir)
+
+
+def _find_definitions_file() -> Optional[str]:
+    """Locate aether_definitions.txt across multiple search paths.
+
+    Search order:
+      1. ./context/aether_definitions.txt        (current working directory)
+      2. ~/.aether/context/aether_definitions.txt (user config directory)
+      3. <package>/context/aether_definitions.txt (installed package)
+      4. <project_root>/context/                  (source-directory use)
+
+    Returns the first path that exists, or None if not found anywhere.
+    """
+    _FILENAME = "aether_definitions.txt"
+    candidates = [
+        os.path.join(os.getcwd(), "context", _FILENAME),
+        os.path.join(os.path.expanduser("~"), ".aether", "context", _FILENAME),
+        os.path.join(_THIS_DIR, "context", _FILENAME),
+        os.path.join(_PROJECT_ROOT, "context", _FILENAME),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+# Ensure the project root is importable (for source-directory use).
+# Only add if main.py exists there — avoids polluting sys.path when
+# pip-installed into site-packages.
+if os.path.isfile(os.path.join(_PROJECT_ROOT, "main.py")):
+    if _PROJECT_ROOT not in sys.path:
+        sys.path.insert(0, _PROJECT_ROOT)
 
 
 def setup_logging(verbose: bool) -> None:
@@ -47,7 +102,7 @@ def run_sim(args) -> None:
     fault_prob = {"disabled": 0.0, "enabled": 0.015, "heavy": 0.05}.get(args.faults, 0.0)
     fault_injector = FaultInjector(fault_probability=fault_prob, seed=args.seed)
 
-    config_path = os.path.join(os.path.dirname(__file__), "configs", f"{args.robot}.json")
+    config_path = os.path.join(_find_data_dir("configs"), f"{args.robot}.json")
     agent = TaskManagerAgent(
         env=env,
         config_path=config_path,
@@ -171,6 +226,8 @@ def run_realworld(args) -> None:
     step = 0
     faults_total = 0
     thermal_consec = 0  # consecutive steps with THERMAL_ANOMALY above threshold
+    fault_cooldown: Dict[str, int] = {}  # fault_type -> last_fired_step
+    _COOLDOWN_STEPS = 50
     try:
         while continuous or step < max_steps:
             step += 1
@@ -206,7 +263,16 @@ def run_realworld(args) -> None:
             if not has_thermal:
                 thermal_consec = 0
 
+            # Apply per-fault-type cooldown: suppress re-alerts within
+            # _COOLDOWN_STEPS of the last firing for the same fault type
+            cooled_reports = []
             for fr in filtered_reports:
+                last = fault_cooldown.get(fr.fault_type, -_COOLDOWN_STEPS - 1)
+                if step - last >= _COOLDOWN_STEPS:
+                    cooled_reports.append(fr)
+                    fault_cooldown[fr.fault_type] = step
+
+            for fr in cooled_reports:
                 if fr.detection_method != "PREDICTIVE":
                     metrics.record_fault_detected(fr.fault_type, fr.subsystem,
                                                   step, fr.detection_method)
@@ -216,7 +282,7 @@ def run_realworld(args) -> None:
                           f"conf={fr.confidence:.2f}")
 
             # 4. Adaptation — monitor only, no movement commands
-            recovery_action = adaptation.adapt(filtered_reports, step)
+            recovery_action = adaptation.adapt(cooled_reports, step)
             if recovery_action and recovery_action != "stop":
                 if recovery_action in _MOVEMENT_ACTIONS:
                     # No hardware adapter — suppress movement, log as monitor
@@ -226,7 +292,7 @@ def run_realworld(args) -> None:
                 else:
                     print(f"  [Step {step:03d}] ADAPT: {recovery_action} "
                           f"| Latency: {adaptation.avg_latency:.1f}")
-                for fr in filtered_reports:
+                for fr in cooled_reports:
                     metrics.record_fault_recovered(fr.fault_type, fr.subsystem,
                                                    step, int(adaptation.avg_latency))
                     memory.record_experience(fr.fault_type, recovery_action,
@@ -306,10 +372,12 @@ def _extract_key_facts(output) -> str:
     if output is None:
         return ""
     text = str(output)
+    # Strip [KNOWLEDGE] / [local extraction] prefixes
     for prefix in ["[KNOWLEDGE]\n", "[KNOWLEDGE] ", "[local extraction]\n"]:
         if text.startswith(prefix):
             text = text[len(prefix):]
             break
+    # Take the first 200 chars as key facts
     text = text.strip()
     if len(text) > 200:
         return text[:197] + "..."
@@ -341,7 +409,7 @@ def run_agent(args) -> None:
 
     # ── Step 3: AutoUpdater ───────────────────────────────────────────
     updater = AutoUpdater()
-    AutoUpdater.ensure_version_file(os.path.dirname(os.path.abspath(__file__)))
+    AutoUpdater.ensure_version_file(_PROJECT_ROOT)
     updater.run(auto_update=auto_update, no_update=no_update)
 
     # ── Step 4: Capability Discovery ──────────────────────────────────
@@ -441,8 +509,8 @@ def run_agent(args) -> None:
         _print_activity("CORRECT", "CorrectionAgent inactive (no API key) — skipping post-step checks")
 
     # Load domain definitions and inject into summarize_text
-    defs_path = os.path.join(os.path.dirname(__file__), "context", "aether_definitions.txt")
-    if os.path.exists(defs_path):
+    defs_path = _find_definitions_file()
+    if defs_path:
         with open(defs_path) as f:
             defs_text = f.read()
         summarizer = registry.get("summarize_text")
@@ -477,14 +545,32 @@ def run_agent(args) -> None:
     if schedule_str:
         from aether.core.task_scheduler import TaskScheduler
 
+        scheduler = TaskScheduler(lambda obj: None)  # placeholder
+
+        # Determine session log file from objective
+        parsed_sched = TaskScheduler.parse_schedule(schedule_str)
+        sched_obj = parsed_sched["objective"] if parsed_sched else schedule_str
+        session_log = scheduler.session_log_file(sched_obj)
+
+        # Inject scheduler context into manifest for template substitution
+        manifest["_scheduler_context"] = {
+            "session_log_file": session_log,
+            "run_number": "1",
+        }
+
         def _sched_execute(obj: str) -> Dict:
+            # Update run_number each call
+            ctx = manifest.get("_scheduler_context", {})
+            ctx["run_number"] = str(scheduler._iteration_counter + 1)
             mem = _load_agent_memory(5)
             return _execute_objective(
                 obj, registry, llm_planner, corrector,
                 parser, manifest, mem, available)
 
-        scheduler = TaskScheduler(_sched_execute)
+        scheduler._execute = _sched_execute
         scheduler.dispatch(schedule_str)
+        # Clean up scheduler context
+        manifest.pop("_scheduler_context", None)
         return  # exit after scheduled run completes
 
     # Fault tracking
@@ -507,7 +593,6 @@ def run_agent(args) -> None:
             print(_persistent_memory.format_summary())
             continue
 
-        _obj_start_time = time.time()
         _print_activity("GOAL", f"Parsing objective: {objective}")
 
         # Use GoalParser for structure, but fall back to raw text for agent-mode planning
@@ -520,6 +605,8 @@ def run_agent(args) -> None:
 
         task_info = parsed.get("task", objective)
         subtasks = parsed.get("subtasks", [])
+
+        _obj_start_time = time.time()
 
         _print_activity("PLAN", f"Task: {task_info}")
         if subtasks:
@@ -536,6 +623,7 @@ def run_agent(args) -> None:
 
         if llm_planner.available:
             _print_activity("PLAN", "Sending to LLM planner...")
+            # Prepend planning hints to memory context
             mem_with_hints = list(recent_memory)
             if hints:
                 mem_with_hints.insert(0, {
@@ -555,9 +643,10 @@ def run_agent(args) -> None:
         step_faults = 0
         prev_output = None  # Chain: previous step's output feeds next step's input
         sim_accumulator = []  # Collect outputs from consecutive run_simulation steps
+        step_outputs: List[Optional[str]] = []  # indexed outputs per step
         for i, action in enumerate(plan, 1):
             tool_name = action["tool"]
-            params = action.get("params", {})
+            params = dict(action.get("params", {}))
 
             # Pipe previous output into this step's input parameter
             pipe_key = action.get("pipe_input")
@@ -570,12 +659,16 @@ def run_agent(args) -> None:
                     params[pipe_key] = str(prev_output)
                 else:
                     _print_activity("SKIP", f"[{i}/{len(plan)}] {tool_name} (no input from previous step)")
+                    step_outputs.append(None)
                     continue
 
             # When transitioning from sim steps to non-sim, flush accumulator
             if tool_name != "run_simulation" and sim_accumulator:
                 prev_output = _format_sim_accumulator(sim_accumulator)
                 sim_accumulator = []
+
+            # Substitute template placeholders ({step1_output}, {current_time}, etc.)
+            params = _substitute_placeholders(params, step_outputs)
 
             _print_activity("EXEC", f"[{i}/{len(plan)}] {tool_name}({_short_params(params)})")
             total_actions += 1
@@ -642,6 +735,9 @@ def run_agent(args) -> None:
                 if tool_name == "run_simulation":
                     sim_accumulator.append(("ok", params.get("scenario", "?"), result.output))
                 prev_output = result.output
+
+            # Track per-step outputs for template substitution
+            step_outputs.append(str(prev_output) if prev_output else None)
 
         # Flush any remaining sim results
         if sim_accumulator:
@@ -1125,6 +1221,41 @@ def _short_params(params: Dict) -> str:
     return ", ".join(parts)
 
 
+def _substitute_placeholders(params: Dict, step_outputs: List[Optional[str]],
+                             extra: Optional[Dict] = None) -> Dict:
+    """Replace {step1_output}, {step2_output}, {current_time} etc. in param values.
+
+    Parameters
+    ----------
+    params : dict
+        Tool call parameters (may contain template strings).
+    step_outputs : list
+        Outputs from previous steps (index 0 = step 1 output, etc.).
+    extra : dict, optional
+        Additional key→value substitutions (e.g. session_log_file).
+    """
+    from datetime import datetime as _dt
+
+    replacements = {
+        "current_time": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    for idx, output in enumerate(step_outputs):
+        replacements[f"step{idx+1}_output"] = str(output) if output else ""
+    if extra:
+        replacements.update(extra)
+
+    result = {}
+    for k, v in params.items():
+        if isinstance(v, str):
+            for placeholder, value in replacements.items():
+                v = v.replace("{" + placeholder + "}", value)
+            result[k] = v
+        else:
+            result[k] = v
+    return result
+
+
 def _summarize_output(output) -> str:
     """One-line summary of tool output for the activity log."""
     if output is None:
@@ -1168,10 +1299,13 @@ def _execute_objective(objective: str, registry, llm_planner, corrector,
     prev_output = None
     sim_accumulator = []
     action_log = []
+    step_outputs: List[Optional[str]] = []
+    # Extra substitution context (e.g. session_log_file from scheduler)
+    _extra_ctx = manifest.get("_scheduler_context") or {}
 
     for i, action in enumerate(plan, 1):
         tool_name = action["tool"]
-        params = action.get("params", {})
+        params = dict(action.get("params", {}))
 
         # Pipe previous output
         pipe_key = action.get("pipe_input")
@@ -1184,11 +1318,15 @@ def _execute_objective(objective: str, registry, llm_planner, corrector,
             else:
                 action_log.append({"tool": tool_name, "status": "skipped",
                                    "reason": "no input from previous step"})
+                step_outputs.append(None)
                 continue
 
         if tool_name != "run_simulation" and sim_accumulator:
             prev_output = _format_sim_accumulator(sim_accumulator)
             sim_accumulator = []
+
+        # Substitute template placeholders
+        params = _substitute_placeholders(params, step_outputs, _extra_ctx)
 
         result = registry.execute(tool_name, params)
 
@@ -1232,6 +1370,7 @@ def _execute_objective(objective: str, registry, llm_planner, corrector,
             prev_output = result.output
 
         action_log.append(entry)
+        step_outputs.append(str(prev_output) if prev_output else None)
 
     # Flush remaining sim results
     if sim_accumulator:
@@ -1311,9 +1450,8 @@ def run_server(args) -> None:
     available = registry.available_tools()
 
     # Load domain definitions
-    defs_path = os.path.join(os.path.dirname(__file__), "context",
-                             "aether_definitions.txt")
-    if os.path.exists(defs_path):
+    defs_path = _find_definitions_file()
+    if defs_path:
         with open(defs_path) as f:
             defs_text = f.read()
         summarizer = registry.get("summarize_text")
@@ -1524,8 +1662,8 @@ def main():
     parser.add_argument("--auto-calibrate", action="store_true",
                         help="Auto-calibrate using camera only, no questions")
     parser.add_argument("--schedule", type=str, default="",
-                        help='Schedule format: "for Xmin: objective" or '
-                             '"every Xs: objective" or "until HH:MM: objective"')
+                        help='Scheduled objective, e.g. "every 30s: scan environment", '
+                             '"for 30min: monitor camera", "until 22:00: log telemetry"')
     args = parser.parse_args()
 
     setup_logging(args.verbose)

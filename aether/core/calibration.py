@@ -225,6 +225,8 @@ class CalibrationWizard:
         # Phase 3
         if self._has_camera:
             self._phase3_camera_verification()
+            # Environment mapping: build occupancy grid after motor mapping
+            self._run_environment_mapping()
         # Phase 4
         self._phase4_safety_limits()
         # Semantic understanding
@@ -477,10 +479,28 @@ class CalibrationWizard:
             print("[Calibration] Camera library not available, skipping.")
             return
 
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("[Calibration] Camera could not be opened, skipping.")
-            return
+        try:
+            from aether.core.tool_builder import _ON_PI
+        except ImportError:
+            _ON_PI = False
+
+        if _ON_PI:
+            from aether.core.tool_builder import _capture_frame_any
+            # Use Pi singleton wrapper instead of cv2.VideoCapture
+            class _PiCapWrap:
+                def isOpened(self):
+                    return True
+                def read(self):
+                    frame, backend = _capture_frame_any()
+                    return (frame is not None), frame
+                def release(self):
+                    pass
+            cap = _PiCapWrap()
+        else:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("[Calibration] Camera could not be opened, skipping.")
+                return
 
         verified_count = 0
         for ch, mapping in self.motor_map.items():
@@ -556,6 +576,51 @@ class CalibrationWizard:
         self.camera_verified = verified_count > 0
         print(f"\n[Calibration] Camera verified {verified_count}/"
               f"{len(self.motor_map)} channels.")
+
+    # ── Environment Mapping (post-Phase 3) ──────────────────────
+
+    def _run_environment_mapping(self) -> None:
+        """Build occupancy grid after motor mapping + camera verification."""
+        if not self.motor_map:
+            return
+        try:
+            from aether.core.mapper import EnvironmentMapper
+
+            # Build a lightweight camera wrapper
+            cv2 = self._get_cv2()
+            if cv2 is None:
+                return
+
+            class _CamWrap:
+                def __init__(self, cv2_mod):
+                    self._cv2 = cv2_mod
+
+                def capture_frame(self):
+                    if _ON_PI:
+                        frame, backend = _capture_frame_any()
+                        return frame
+                    cap = self._cv2.VideoCapture(0)
+                    ret, frame = cap.read()
+                    cap.release()
+                    return frame if ret else None
+
+            # Build a motor function from adapter or stub
+            def _motor_fn(action: str, duration: float):
+                if self.adapter and hasattr(self.adapter, "execute"):
+                    self.adapter.execute(action, duration=duration)
+
+            mapper = EnvironmentMapper(
+                camera_tool=_CamWrap(cv2),
+                motor_fn=_motor_fn,
+                configs_dir=self.configs_dir,
+            )
+            print("\n[Calibration] Building environment map...")
+            result = mapper.run()
+            print(f"[Calibration] Map saved — "
+                  f"{result['waypoints']} waypoints, "
+                  f"{result['occupied_cells']} occupied cells")
+        except Exception as e:
+            print(f"[Calibration] Environment mapping skipped: {e}")
 
     # ── Phase 4: Safety Limits ────────────────────────────────────
 

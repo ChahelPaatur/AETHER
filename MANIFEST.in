@@ -1,0 +1,15 @@
+recursive-include aether *.py
+recursive-include aether/core *.py
+recursive-include aether/agents *.py
+recursive-include aether/adapters *.py
+recursive-include aether/simulation *.py
+recursive-include aether/faults *.py
+recursive-include aether/capabilities *.py
+recursive-include aether/actions *.py
+recursive-include configs *.json
+recursive-include context *.txt
+recursive-include weights *.npy
+include main.py
+include VERSION
+include install.sh
+include requirements.txt

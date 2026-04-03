@@ -168,6 +168,104 @@ class TestYOLOToolDescribeScene:
         assert "cannot see" in result["result"]["description"].lower()
 
 
+class TestDescribeSceneVisionApiFallback:
+    """Tests for the Anthropic vision API fallback when ultralytics is missing."""
+
+    def test_falls_back_to_vision_api_when_no_ultralytics(self):
+        tool = YOLOTool()
+        tool._has_ultralytics = False
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+            tmp_path = f.name
+
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text="A room with a desk and a laptop.")]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_msg
+        mock_anthropic_mod = MagicMock()
+        mock_anthropic_mod.Anthropic.return_value = mock_client
+
+        try:
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                 patch.dict("sys.modules", {"anthropic": mock_anthropic_mod}):
+
+                result = tool.describe_scene(image_path=tmp_path)
+                assert result["success"]
+                assert result["result"]["backend"] == "anthropic_vision"
+                assert result["result"]["model"] == "claude-sonnet-4-20250514"
+                assert "desk" in result["result"]["description"]
+
+                # Verify API was called with correct model and image
+                call_kwargs = mock_client.messages.create.call_args
+                assert call_kwargs.kwargs["model"] == "claude-sonnet-4-20250514"
+                msg_content = call_kwargs.kwargs["messages"][0]["content"]
+                assert msg_content[0]["type"] == "image"
+                assert msg_content[0]["source"]["type"] == "base64"
+                assert msg_content[1]["type"] == "text"
+                assert "Describe what you see" in msg_content[1]["text"]
+        finally:
+            os.unlink(tmp_path)
+
+    def test_vision_api_fails_without_api_key(self):
+        tool = YOLOTool()
+        tool._has_ultralytics = False
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b"\xff\xd8\xff\xe0")
+            tmp_path = f.name
+
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                os.environ.pop("ANTHROPIC_API_KEY", None)
+                result = tool.describe_scene(image_path=tmp_path)
+                assert not result["success"]
+                assert "ANTHROPIC_API_KEY" in result["error"]
+        finally:
+            os.unlink(tmp_path)
+
+    def test_vision_api_captures_frame_when_no_image_path(self):
+        tool = YOLOTool()
+        tool._has_ultralytics = False
+
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        tmp.write(b"\xff\xd8\xff\xe0" + b"\x00" * 50)
+        tmp.close()
+
+        tool._capture_frame = MagicMock(return_value=(tmp.name, None))
+
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text="A hallway.")]
+
+        try:
+            mock_client = MagicMock()
+            mock_client.messages.create.return_value = mock_msg
+            mock_anthropic_mod = MagicMock()
+            mock_anthropic_mod.Anthropic.return_value = mock_client
+
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
+                 patch.dict("sys.modules", {"anthropic": mock_anthropic_mod}):
+
+                result = tool.describe_scene()
+                assert result["success"]
+                tool._capture_frame.assert_called_once()
+                assert result["result"]["backend"] == "anthropic_vision"
+        finally:
+            os.unlink(tmp.name)
+
+    def test_vision_api_capture_failure(self):
+        tool = YOLOTool()
+        tool._has_ultralytics = False
+        tool._capture_frame = MagicMock(return_value=(None, "no camera"))
+
+        result = tool.describe_scene()
+        assert not result["success"]
+        assert "capture failed" in result["error"]
+
+
 class TestYOLOToolCountObjects:
     def test_count_matching_class(self):
         tool = YOLOTool()
@@ -207,9 +305,25 @@ class TestToolBuilderIntegration:
         assert "yolo" in tools
         assert isinstance(tools["yolo"], YOLOTool)
 
-    def test_yolo_not_built_without_ultralytics(self):
+    def test_yolo_built_with_camera_even_without_ultralytics(self):
+        """YOLOTool is built when camera is available (vision API fallback)."""
         manifest = {
             "hardware": {"camera": {"available": True}},
+            "software": {"ultralytics": False},
+            "network": {},
+            "motor_controllers": [],
+        }
+        builder = ToolBuilder(manifest)
+        tools = builder.build_all()
+        assert "yolo" in tools
+        # On environments where ultralytics IS installed, the tool will
+        # detect it at import time regardless of the manifest flag.
+        # The important thing is the tool is built and available.
+
+    def test_yolo_not_built_without_camera_or_ultralytics(self):
+        """YOLOTool is NOT built when neither camera nor ultralytics."""
+        manifest = {
+            "hardware": {"camera": {"available": False}},
             "software": {"ultralytics": False},
             "network": {},
             "motor_controllers": [],

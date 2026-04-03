@@ -1,27 +1,29 @@
 <p align="center">
+  <img src="https://img.shields.io/pypi/v/aether-robotics?style=flat-square&color=blue" alt="PyPI">
   <img src="https://img.shields.io/badge/python-3.8%2B-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License: MIT">
+  <img src="https://img.shields.io/github/stars/ChahelPaatur/AETHER?style=flat-square" alt="GitHub Stars">
   <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Raspberry%20Pi%20%7C%20Jetson-lightgrey?style=flat-square" alt="Platforms">
   <img src="https://img.shields.io/badge/version-3.0-red?style=flat-square" alt="v3.0">
 </p>
 
-<pre align="center">
+```
     ████████████████████████████████
-   █<span style="color:red">██████████████████████████████</span>█
-  █<span style="color:red">████</span>╔═══════════════════╗<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║  <b>▄████▄   ▄████▄</b>  ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║ <b>████████████████</b> ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║ ██<span style="color:red">██████████</span>██ ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║ █▀▀████████▀▀█ ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║  <b>▀████▀   ▀████▀</b>  ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║  ━━━━━━━━━━━━━━━  ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║  <b>▌ AETHER  v3 ▐</b>  ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>║  ━━━━━━━━━━━━━━━  ║<span style="color:red">████</span>█
-  █<span style="color:red">████</span>╚═══════════════════╝<span style="color:red">████</span>█
-   █<span style="color:red">██████████████████████████████</span>█
+   █░██████████████████████████████░█
+  █░████╔═══════════════════╗████░█
+  █░████║  ▄████▄   ▄████▄  ║████░█
+  █░████║ ████████████████ ║████░█
+  █░████║ ██░██████████░██ ║████░█
+  █░████║ █▀▀████████▀▀█ ║████░█
+  █░████║  ▀████▀   ▀████▀  ║████░█
+  █░████║▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄║████░█
+  █░████║  ━━━━━━━━━━━━━━━  ║████░█
+  █░████║  ▌ AETHER  v3 ▐  ║████░█
+  █░████║  ━━━━━━━━━━━━━━━  ║████░█
+  █░████╚═══════════════════╝████░█
+   █░██████████████████████████████░█
     ████████████████████████████████
-</pre>
+```
 
 <h1 align="center">AETHER v3</h1>
 <h3 align="center">Adaptive Embodied Task Hierarchy for Executable Robotics</h3>
@@ -36,14 +38,14 @@ AETHER is a multi-agent robotics framework that detects, diagnoses, and recovers
 ## Quick Start
 
 ```bash
-# 1. Install dependencies (auto-detects your platform)
-bash install.sh
+# 1. Install
+pip install aether-robotics
 
-# 2. Run the simulation with fault injection and performance plots
-python main.py --mode sim --faults enabled --scenario compound --plots
+# 2. Calibrate your hardware
+aether --calibrate
 
-# 3. Run on real hardware (webcam + system telemetry)
-python main.py --mode realworld --continuous
+# 3. Run in agent mode
+aether --mode agent
 ```
 
 ---
@@ -79,14 +81,11 @@ Three capability levels adapt automatically:
 
 ## Benchmark Results
 
-| Metric | Simulation (5,000 runs) | Real Hardware (6,023 steps) |
-|--------|------------------------:|---------------------------:|
-| **SFRI** | 60.07 | **69.99** |
-| Detection Rate | 85–95% | **100%** |
-| Recovery Rate | 80–90% | **100%** |
-| False Positive Rate | 2–5% | **0.0%** |
-| MTTD (steps) | 3–8 | **< 2** |
-| MTTR (steps) | 5–15 | **< 5** |
+| Platform | SFRI | Detection Rate | Recovery Rate | FPR |
+|----------|-----:|---------------:|--------------:|----:|
+| Laptop (simulation, 5,000 runs) | **60.07** | 74.7% | 80–90% | 2–5% |
+| Raspberry Pi (real hardware, 6,023 steps) | **69.99** | 100% | 100% | 0.0% |
+| SpeedyBee Drone | TBD | TBD | TBD | TBD |
 
 > **SFRI** (Stability Fault Recovery Index) = 35&times;DR + 25&times;(1 &minus; MTTR/max_steps) + 10&times;RR &minus; 30&times;FPR
 > Range: 0&ndash;70. Higher is better.
@@ -97,14 +96,14 @@ Real hardware outperforms simulation because the physical system encounters genu
 
 ## Supported Hardware
 
-| Platform | Camera | Motors | Flight Controller | Notes |
-|----------|--------|--------|-------------------|-------|
-| **Laptop + USB webcam** | OpenCV (cv2) | &mdash; | &mdash; | Level 1 autonomy, development & testing |
-| **Raspberry Pi + Pi Camera** | picamera2 / cv2 | &mdash; | &mdash; | Level 1, headless visual perception |
-| **Raspberry Pi + GPIO motors** | picamera2 / cv2 | RPi.GPIO / gpiozero | &mdash; | Level 2, ground vehicle navigation |
-| **Raspberry Pi + SpeedyBee FC** | picamera2 / cv2 | &mdash; | MAVLink (pymavlink) | Level 3, autonomous drone flight |
+| Platform | Details |
+|----------|---------|
+| :computer: **Laptop + USB webcam** | Level 1 autonomy — development & testing |
+| :strawberry: **Raspberry Pi + Pi Camera** | Level 1 — headless visual perception |
+| :strawberry: **Raspberry Pi + GPIO motors** | Level 2 — ground vehicle navigation |
+| :helicopter: **Raspberry Pi + SpeedyBee FC** | Level 3 — autonomous drone flight |
 
-Additional supported interfaces: I2C sensors (smbus2), serial UART, ultrasonic rangefinders, IMU, temperature probes, LiDAR, battery monitoring.
+Additional: I2C sensors, serial UART, ultrasonic rangefinders, IMU, temperature probes, LiDAR, battery monitoring.
 
 ---
 
@@ -157,6 +156,22 @@ Additional supported interfaces: I2C sensors (smbus2), serial UART, ultrasonic r
 
 ---
 
+## Calibration
+
+The `CalibrationWizard` runs when new hardware is detected that hasn't been profiled before. It walks through 7 phases:
+
+1. **Component Identification** — asks robot type (ground, aerial, arm, aquatic, custom)
+2. **Motor Mapping** — tests each channel at low power, records what physically moved
+3. **Camera-Assisted Verification** — uses optical flow to confirm motor-to-function assignments
+4. **Environment Mapping** — drives a grid pattern to build a 100x100 occupancy grid
+5. **Safety Limits** — sets per-component speed/angle/power limits
+6. **Capability Generation** — saves a JSON robot profile to `configs/`
+7. **Action Generation** — builds the correct action set for the detected robot type
+
+Run with `--auto-calibrate` for headless (no interactive prompts) calibration using camera feedback only.
+
+---
+
 ## CLI Reference
 
 | Flag | Default | Description |
@@ -184,35 +199,6 @@ Additional supported interfaces: I2C sensors (smbus2), serial UART, ultrasonic r
 
 ---
 
-## Project Structure
-
-```
-aether/
-├── core/               # Discovery, planning, execution, metrics
-│   ├── tool_discovery   # Hardware/software capability probing
-│   ├── tool_builder     # Construct tools from manifest
-│   ├── tool_registry    # Register executable tools
-│   ├── navigation_engine# 3-level hardware-agnostic navigation
-│   ├── llm_planner      # Claude-based task planning
-│   ├── calibration      # Interactive hardware calibration
-│   ├── metrics          # SFRI, MTTD, MTTR tracking
-│   └── visualizer       # Plot generation
-├── agents/              # Domain-specific agents
-│   ├── fault_agent      # DRL-First Hybrid FDIR (PPO)
-│   ├── perception_agent # 15-dim observation construction
-│   ├── adaptation_agent # Fault recovery actions
-│   ├── camera_agent     # Visual processing
-│   └── ...              # power, thermal, navigation, memory
-├── simulation/          # Physics environment, scenarios
-├── faults/              # Fault injection & detection
-├── adapters/            # Hardware abstraction (rover, drone)
-configs/                 # Robot profiles (rover_v1, drone_v1)
-weights/                 # Pre-trained PPO network weights
-tests/                   # Test suite
-```
-
----
-
 ## Citation
 
 If you use AETHER in your research, please cite:
@@ -223,6 +209,7 @@ If you use AETHER in your research, please cite:
   author    = {Paatur, Chahel},
   year      = {2026},
   version   = {3.0},
+  url       = {https://github.com/ChahelPaatur/AETHER},
   note      = {DRL-First Hybrid FDIR with multi-agent auto-configuration},
 }
 ```

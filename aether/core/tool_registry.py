@@ -188,6 +188,10 @@ class ExecuteShellTool(BaseTool):
     # Commands that are never allowed
     _BLOCKED = {"rm -rf /", "mkfs", "dd if=", ":(){", "fork bomb"}
 
+    # Shell metacharacters that enable injection — rejected unless
+    # the command is explicitly whitelisted.
+    _INJECTION_CHARS = {";", "|", "`", "$("}
+
     def description(self) -> str:
         return "Execute a command or filesystem operation"
 
@@ -223,6 +227,14 @@ class ExecuteShellTool(BaseTool):
             if blocked in command:
                 return ToolResult(tool=self.name, success=False,
                                   error=f"Blocked dangerous command pattern: {blocked}")
+
+        # Reject shell injection characters
+        for ch in self._INJECTION_CHARS:
+            if ch in command:
+                return ToolResult(
+                    tool=self.name, success=False,
+                    error=f"Blocked shell metacharacter '{ch}' — "
+                          f"split into separate commands instead")
 
         # Python builtins for common shell commands
         builtin_result = self._try_python_builtin(command, t0)
@@ -435,6 +447,47 @@ class WriteFileTool(BaseTool):
             return ToolResult(
                 tool=self.name, success=True,
                 output=f"Wrote {len(content)} bytes to {path}",
+                duration_ms=(time.time() - t0) * 1000,
+            )
+        except Exception as e:
+            return ToolResult(tool=self.name, success=False, error=str(e),
+                              duration_ms=(time.time() - t0) * 1000)
+
+
+class AppendFileTool(BaseTool):
+    name = "append_file"
+
+    def description(self) -> str:
+        return "Append content to a file (creates if missing, adds newline separator)"
+
+    def can_execute(self) -> bool:
+        return True
+
+    _FILEPATH_RE = re.compile(r'[\w./\-]+\.(?:json|csv|txt|py|md|log|html)')
+
+    def execute(self, params: Dict) -> ToolResult:
+        t0 = time.time()
+        path = params.get("path", "") or params.get("filename", "") or params.get("file", "")
+        content = params.get("content", "")
+        if not path:
+            return ToolResult(tool=self.name, success=False, error="No path provided")
+
+        if ' ' in path:
+            m = self._FILEPATH_RE.search(path)
+            if m:
+                path = m.group(0)
+
+        path = os.path.realpath(path)
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "a") as f:
+                # Add newline separator if file already has content
+                if os.path.getsize(path) > 0:
+                    f.write("\n")
+                f.write(content)
+            return ToolResult(
+                tool=self.name, success=True,
+                output=f"Appended {len(content)} bytes to {path}",
                 duration_ms=(time.time() - t0) * 1000,
             )
         except Exception as e:
@@ -791,7 +844,7 @@ def register_built_tools(registry: "ToolRegistry",
             ("detect", "Run YOLOv8 object detection on an image"),
             ("detect_from_camera", "Capture camera frame and run YOLOv8 detection"),
             ("count_objects", "Count objects of a given class via YOLO detection"),
-            ("describe_scene", "Describe everything visible using YOLOv8 detection"),
+            ("describe_scene", "Describe everything visible (YOLO or Anthropic vision API)"),
         ],
         # storage methods overlap with existing ReadFileTool/WriteFileTool,
         # so we skip them to avoid name collisions
@@ -921,7 +974,7 @@ class ToolRegistry:
     def _register_defaults(self) -> None:
         for tool_cls in [
             WebSearchTool, ExecuteShellTool, ReadFileTool,
-            WriteFileTool, CallApiTool, SummarizeTextTool,
+            WriteFileTool, AppendFileTool, CallApiTool, SummarizeTextTool,
             RunSimulationTool,
         ]:
             tool = tool_cls()

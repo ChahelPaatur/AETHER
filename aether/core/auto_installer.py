@@ -7,6 +7,7 @@ Usage:
     installer.run(auto_install=False, no_install=False)
 """
 import importlib
+import json
 import os
 import platform
 import subprocess
@@ -52,6 +53,36 @@ CAPABILITY_MAP = {
 }
 
 
+_PREFS_PATH = os.path.join("logs", "installer_prefs.json")
+
+
+def _load_skip_pref() -> bool:
+    """Return True if the user previously chose 'skip' permanently."""
+    if not os.path.exists(_PREFS_PATH):
+        return False
+    try:
+        with open(_PREFS_PATH) as f:
+            data = json.load(f)
+        return data.get("skip_install", False)
+    except (json.JSONDecodeError, OSError):
+        return False
+
+
+def _save_skip_pref(skip: bool) -> None:
+    """Persist the skip preference to disk."""
+    os.makedirs(os.path.dirname(_PREFS_PATH) or ".", exist_ok=True)
+    data = {}
+    if os.path.exists(_PREFS_PATH):
+        try:
+            with open(_PREFS_PATH) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            data = {}
+    data["skip_install"] = skip
+    with open(_PREFS_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 class AutoInstaller:
     """Detects missing libraries and offers to install them."""
 
@@ -88,12 +119,13 @@ class AutoInstaller:
 
         Args:
             auto_install: Install everything without asking.
-            no_install: Skip the prompt entirely.
+            no_install: Skip the prompt entirely (also skips if user
+                        previously chose 'skip' and preference is saved).
 
         Returns:
             True if any packages were installed.
         """
-        if no_install or self._skip_session:
+        if no_install or self._skip_session or _load_skip_pref():
             return False
 
         missing = self.check_missing()
@@ -117,7 +149,9 @@ class AutoInstaller:
 
             if choice == "skip":
                 self._skip_session = True
-                print("[AutoInstaller] Skipped for this session")
+                _save_skip_pref(True)
+                print("[AutoInstaller] Skipped permanently (delete "
+                      f"{_PREFS_PATH} to re-enable)")
                 return False
             if choice not in ("", "y", "yes"):
                 print("[AutoInstaller] Skipped")

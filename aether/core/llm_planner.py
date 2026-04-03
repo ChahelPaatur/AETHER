@@ -130,6 +130,20 @@ class LLMPlanner:
                     f"  Outcome: {mem.get('outcome', '?')}"
                 )
 
+        # Scheduler context: tell planner this is a scheduled run so it
+        # focuses on data retrieval only — logging is handled externally.
+        sched_ctx = manifest.get("_scheduler_context")
+        if sched_ctx:
+            run_num = sched_ctx.get("run_number", "?")
+            user_parts.append("\n## Scheduled Task Context")
+            user_parts.append(
+                f"This is scheduled run #{run_num} of an ongoing task.\n"
+                f"The scheduler handles ALL file logging automatically.\n"
+                f"Do NOT use write_file or append_file — just retrieve "
+                f"the requested data.\n"
+                f"Focus only on data retrieval and analysis steps."
+            )
+
         user_parts.append(f"\n## Objective\n{objective}")
 
         user_message = "\n".join(user_parts)

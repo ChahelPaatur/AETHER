@@ -510,6 +510,25 @@ class UniversalAdapter(HardwareAdapter):
     def _ensure_capture(self):
         if self._cap is not None and self._cap.isOpened():
             return self._cap
+        # On Pi, use the shared picamera2 singleton
+        try:
+            from aether.core.tool_builder import _ON_PI
+            if _ON_PI:
+                from aether.core.tool_builder import _capture_frame_any
+                # Return a lightweight wrapper so callers can still call .read()
+                class _PiCapWrap:
+                    """Mimics cv2.VideoCapture interface using Pi singleton."""
+                    def isOpened(self):
+                        return True
+                    def read(self):
+                        frame, backend = _capture_frame_any()
+                        return (frame is not None), frame
+                    def release(self):
+                        pass
+                self._cap = _PiCapWrap()
+                return self._cap
+        except ImportError:
+            pass
         cv2 = self._ensure_cv2()
         if cv2 is None:
             return None

@@ -98,8 +98,34 @@ def _try_import(name: str):
         return None
 
 
+def _is_raspberry_pi() -> bool:
+    """Detect if running on a Raspberry Pi."""
+    try:
+        with open("/proc/device-tree/model", "r") as f:
+            if "Raspberry Pi" in f.read():
+                return True
+    except (FileNotFoundError, OSError, PermissionError):
+        pass
+    return False
+
+
+_IS_PI = _is_raspberry_pi()
+
+
 def _detect_nav_camera_backend():
-    """Detect camera backend for navigation: cv2 or picamera2."""
+    """Detect camera backend for navigation.
+
+    On Raspberry Pi, cv2.VideoCapture(0) causes V4L2 timeouts, so we
+    skip cv2 entirely and use picamera2 directly.
+    """
+    if _IS_PI:
+        try:
+            from picamera2 import Picamera2
+            return "picamera2", Picamera2
+        except (ImportError, RuntimeError):
+            pass
+        return None, None
+
     try:
         import cv2
         return "cv2", cv2
@@ -142,13 +168,15 @@ class _CameraNav:
         atexit.register(self.close)
 
     def _ensure_picamera(self) -> Optional[str]:
-        """Lazily initialize picamera2 singleton."""
+        """Lazily initialize picamera2 singleton with RGB888 config."""
         if self._picam is not None and self._picam_started:
             return None
         try:
             Picamera2 = self._backend_mod
             self._picam = Picamera2()
-            config = self._picam.create_still_configuration()
+            config = self._picam.create_still_configuration(
+                main={"size": (1920, 1080), "format": "RGB888"}
+            )
             self._picam.configure(config)
             self._picam.start()
             time.sleep(0.5)
@@ -161,6 +189,14 @@ class _CameraNav:
 
     def _ensure_camera(self) -> Optional[str]:
         if self._backend_name == "cv2":
+            if _IS_PI:
+                # On Pi, use the shared picamera2 singleton
+                from aether.core.tool_builder import _capture_frame_any
+                frame, backend = _capture_frame_any()
+                if frame is None:
+                    return backend
+                self._last_pi_frame = frame
+                return None
             if self._cv2 is None:
                 return "cv2 not installed"
             if self._cap is None or not self._cap.isOpened():
@@ -202,21 +238,28 @@ class _CameraNav:
         return frame
 
     def _save_frame(self, frame, prefix="scan") -> str:
-        """Save frame to disk as JPEG."""
+        """Save frame to disk as JPEG.
+
+        Handles RGB→BGR conversion for picamera2 frames saved via cv2.
+        """
         out_dir = os.path.join("logs", "captures")
         os.makedirs(out_dir, exist_ok=True)
         ts = int(time.time() * 1000)
         filepath = os.path.join(out_dir, f"{prefix}_{ts}.jpg")
-        if self._cv2 is not None:
-            self._cv2.imwrite(filepath, frame)
-        else:
-            try:
+        try:
+            if self._cv2 is not None:
+                if self._backend_name == "picamera2" and len(frame.shape) == 3:
+                    frame_bgr = frame[:, :, ::-1]
+                    self._cv2.imwrite(filepath, frame_bgr)
+                else:
+                    self._cv2.imwrite(filepath, frame)
+            else:
                 from PIL import Image
                 img = Image.fromarray(frame)
                 img.save(filepath, "JPEG")
-            except ImportError:
-                np.save(filepath.replace(".jpg", ".npy"), frame)
-                filepath = filepath.replace(".jpg", ".npy")
+        except Exception:
+            np.save(filepath.replace(".jpg", ".npy"), frame)
+            filepath = filepath.replace(".jpg", ".npy")
         _nav_cam_log.info("Captured image: %s", filepath)
         return filepath
 
