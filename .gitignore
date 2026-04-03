@@ -88,3 +88,7 @@ htmlcov/
 *.temp
 temp/
 tmp/
+logs/scheduled_*.log
+logs/installer_prefs.json
+system_health*.log
+system_health*.txt
