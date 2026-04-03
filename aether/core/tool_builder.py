@@ -607,7 +607,7 @@ class YOLOTool:
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=1024,
+            max_tokens=300,
             messages=[{
                 "role": "user",
                 "content": [
@@ -621,9 +621,9 @@ class YOLOTool:
                     },
                     {
                         "type": "text",
-                        "text": ("Describe what you see in this image in detail, "
-                                 "including any people, objects, text, and their "
-                                 "positions."),
+                        "text": ("Describe what you see in this image in detail. "
+                                 "Include people, objects, hands, fingers, text, "
+                                 "colors, and positions."),
                     },
                 ],
             }],
@@ -660,12 +660,24 @@ class YOLOTool:
 
             # ── Fallback: no ultralytics → use Anthropic vision API ──
             if not self._has_ultralytics:
-                if not image_path or not os.path.exists(image_path):
-                    # Need to capture an image first
-                    filepath, cap_err = self._capture_frame()
-                    if cap_err:
-                        return _err(f"no ultralytics and capture failed: {cap_err}")
-                    image_path = filepath
+                if not image_path or not os.path.exists(str(image_path)):
+                    # Use _capture_frame_any() directly — on Pi this uses
+                    # the picamera2 singleton which is proven to work,
+                    # avoiding the "device busy" issue with _capture_frame().
+                    frame, backend = _capture_frame_any()
+                    if frame is None:
+                        return _err(f"no ultralytics and capture failed: {backend}")
+                    try:
+                        import cv2
+                        cap_dir = os.path.join("logs", "captures")
+                        os.makedirs(cap_dir, exist_ok=True)
+                        image_path = os.path.join(
+                            cap_dir,
+                            f"describe_{int(time.time() * 1000)}.jpg",
+                        )
+                        cv2.imwrite(image_path, frame)
+                    except Exception as e:
+                        return _err(f"failed to save captured frame: {e}")
                 return self._describe_via_vision_api(image_path)
 
             # ── Primary: YOLOv8 local detection ──────────────────────

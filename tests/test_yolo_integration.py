@@ -205,6 +205,7 @@ class TestDescribeSceneVisionApiFallback:
                 assert msg_content[0]["source"]["type"] == "base64"
                 assert msg_content[1]["type"] == "text"
                 assert "Describe what you see" in msg_content[1]["text"]
+                assert "hands, fingers" in msg_content[1]["text"]
         finally:
             os.unlink(tmp_path)
 
@@ -227,31 +228,45 @@ class TestDescribeSceneVisionApiFallback:
             os.unlink(tmp_path)
 
     def test_vision_api_captures_frame_when_no_image_path(self):
+        """When no image_path is given, _capture_frame_any() is called and
+        the resulting frame is saved to disk then sent to the vision API."""
+        import numpy as np
+        import tempfile
+
         tool = YOLOTool()
         tool._has_ultralytics = False
 
-        import tempfile
+        fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        mock_msg = MagicMock()
+        mock_msg.content = [MagicMock(text="A hallway.")]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_msg
+        mock_anthropic_mod = MagicMock()
+        mock_anthropic_mod.Anthropic.return_value = mock_client
+
+        # Create a real temp file that _describe_via_vision_api can read
         tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
         tmp.write(b"\xff\xd8\xff\xe0" + b"\x00" * 50)
         tmp.close()
 
-        tool._capture_frame = MagicMock(return_value=(tmp.name, None))
-
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="A hallway.")]
+        # Patch _describe_via_vision_api to verify it gets called with a path
+        # while also patching _capture_frame_any to verify it gets called
+        capture_mock = MagicMock(return_value=(fake_frame, "cv2"))
+        vision_mock = MagicMock(return_value=_ok({
+            "description": "A hallway.",
+            "backend": "anthropic_vision",
+            "model": "claude-sonnet-4-20250514",
+            "image_path": tmp.name,
+        }))
 
         try:
-            mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_msg
-            mock_anthropic_mod = MagicMock()
-            mock_anthropic_mod.Anthropic.return_value = mock_client
-
-            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
-                 patch.dict("sys.modules", {"anthropic": mock_anthropic_mod}):
-
+            with patch("aether.core.tool_builder._capture_frame_any", capture_mock), \
+                 patch.object(tool, "_describe_via_vision_api", vision_mock):
                 result = tool.describe_scene()
                 assert result["success"]
-                tool._capture_frame.assert_called_once()
+                capture_mock.assert_called_once()
+                vision_mock.assert_called_once()
                 assert result["result"]["backend"] == "anthropic_vision"
         finally:
             os.unlink(tmp.name)
@@ -259,11 +274,12 @@ class TestDescribeSceneVisionApiFallback:
     def test_vision_api_capture_failure(self):
         tool = YOLOTool()
         tool._has_ultralytics = False
-        tool._capture_frame = MagicMock(return_value=(None, "no camera"))
 
-        result = tool.describe_scene()
-        assert not result["success"]
-        assert "capture failed" in result["error"]
+        with patch("aether.core.tool_builder._capture_frame_any",
+                   return_value=(None, "no camera available")):
+            result = tool.describe_scene()
+            assert not result["success"]
+            assert "capture failed" in result["error"]
 
 
 class TestYOLOToolCountObjects:
