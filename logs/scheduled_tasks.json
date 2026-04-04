@@ -8833,5 +8833,1274 @@
         "result": ""
       }
     ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:33.579348",
+    "schedule": "for 0min",
+    "objective": "log test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:31.766632",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:32.267863",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:32.767976",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:32:33.268501",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:36.606161",
+    "schedule": "for 0min",
+    "objective": "test objective",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:33.601509",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:34.602709",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:35.602869",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:39.631858",
+    "schedule": "for 0min",
+    "objective": "fast",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 6,
+    "successes": 6,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:36.627778",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:37.128927",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:37.629792",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:32:38.130124",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 5,
+        "timestamp": "2026-04-04T15:32:38.630856",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 6,
+        "timestamp": "2026-04-04T15:32:39.131924",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:39.856634",
+    "schedule": "every 0s",
+    "objective": "repeat task",
+    "total_elapsed_s": 0.2,
+    "total_elapsed_min": 0.0,
+    "iterations": 3,
+    "successes": 2,
+    "degraded": 1,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:39.651428",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:39.752537",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:41.681273",
+    "schedule": "for 0min",
+    "objective": "quick test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 1,
+    "successes": 1,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:39.875080",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: quick test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:44.707540",
+    "schedule": "for 0min",
+    "objective": "interval test",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:41.702150",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:42.703358",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:43.703815",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:45.935819",
+    "schedule": "for 0min",
+    "objective": "log save test",
+    "total_elapsed_s": 1.2,
+    "total_elapsed_min": 0.0,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:44.730695",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:45.231843",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:45.733161",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:47.786541",
+    "schedule": "for 0min",
+    "objective": "session log test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:45.982542",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:46.483728",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:46.984177",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:32:47.485655",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:32:49.619902",
+    "schedule": "for 0min",
+    "objective": "check health and save to log.txt",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:32:47.812850",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:32:48.314117",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:32:48.815341",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:32:49.315462",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:34:53.914078",
+    "schedule": "for 0min",
+    "objective": "log test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:34:52.103553",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:34:52.604782",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:34:53.105732",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:34:53.606266",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:34:56.941135",
+    "schedule": "for 0min",
+    "objective": "test objective",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:34:53.932681",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:34:54.933922",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:34:55.935028",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:34:59.969306",
+    "schedule": "for 0min",
+    "objective": "fast",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 6,
+    "successes": 6,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:34:56.961538",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:34:57.462765",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:34:57.963582",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:34:58.464631",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 5,
+        "timestamp": "2026-04-04T15:34:58.965694",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 6,
+        "timestamp": "2026-04-04T15:34:59.466163",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:35:00.199483",
+    "schedule": "every 0s",
+    "objective": "repeat task",
+    "total_elapsed_s": 0.2,
+    "total_elapsed_min": 0.0,
+    "iterations": 3,
+    "successes": 2,
+    "degraded": 1,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:34:59.993138",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:35:00.094339",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:35:02.025921",
+    "schedule": "for 0min",
+    "objective": "quick test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 1,
+    "successes": 1,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:35:00.219096",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: quick test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:35:05.055500",
+    "schedule": "for 0min",
+    "objective": "interval test",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:35:02.049548",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:35:03.050890",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:35:04.052025",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:35:06.284863",
+    "schedule": "for 0min",
+    "objective": "log save test",
+    "total_elapsed_s": 1.2,
+    "total_elapsed_min": 0.0,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:35:05.076608",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:35:05.577837",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:35:06.078874",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:35:08.129931",
+    "schedule": "for 0min",
+    "objective": "session log test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:35:06.325598",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:35:06.826822",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:35:07.327930",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:35:07.828962",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:35:09.963533",
+    "schedule": "for 0min",
+    "objective": "check health and save to log.txt",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:35:08.155236",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:35:08.656475",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:35:09.156538",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:35:09.656823",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:43.828887",
+    "schedule": "for 0min",
+    "objective": "log test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:42.019302",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:42.520429",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:43.021500",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:42:43.522536",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:46.851616",
+    "schedule": "for 0min",
+    "objective": "test objective",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:43.846403",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:44.847831",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:45.848536",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: test objective"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:49.869783",
+    "schedule": "for 0min",
+    "objective": "fast",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 6,
+    "successes": 6,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:46.865466",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:47.366571",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:47.867307",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:42:48.368382",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 5,
+        "timestamp": "2026-04-04T15:42:48.869198",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 6,
+        "timestamp": "2026-04-04T15:42:49.370262",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:50.088661",
+    "schedule": "every 0s",
+    "objective": "repeat task",
+    "total_elapsed_s": 0.2,
+    "total_elapsed_min": 0.0,
+    "iterations": 3,
+    "successes": 2,
+    "degraded": 1,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:49.883924",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:49.985122",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:51.909804",
+    "schedule": "for 0min",
+    "objective": "quick test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 1,
+    "successes": 1,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:50.105429",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: quick test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:54.932699",
+    "schedule": "for 0min",
+    "objective": "interval test",
+    "total_elapsed_s": 3.0,
+    "total_elapsed_min": 0.1,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:51.928366",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:52.929621",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:53.929635",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: interval test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:56.156306",
+    "schedule": "for 0min",
+    "objective": "log save test",
+    "total_elapsed_s": 1.2,
+    "total_elapsed_min": 0.0,
+    "iterations": 3,
+    "successes": 3,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:54.951375",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:55.452520",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:55.953623",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: log save test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:57.989725",
+    "schedule": "for 0min",
+    "objective": "session log test",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:56.187298",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:56.688567",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:57.189507",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:42:57.690554",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [
+          "mock"
+        ],
+        "result": "ran: session log test"
+      }
+    ]
+  },
+  {
+    "completed_at": "2026-04-04T15:42:59.807568",
+    "schedule": "for 0min",
+    "objective": "check health and save to log.txt",
+    "total_elapsed_s": 1.8,
+    "total_elapsed_min": 0.0,
+    "iterations": 4,
+    "successes": 4,
+    "degraded": 0,
+    "total_faults": 0,
+    "runs": [
+      {
+        "iteration": 1,
+        "timestamp": "2026-04-04T15:42:58.003892",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 2,
+        "timestamp": "2026-04-04T15:42:58.505011",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 3,
+        "timestamp": "2026-04-04T15:42:59.006037",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      },
+      {
+        "iteration": 4,
+        "timestamp": "2026-04-04T15:42:59.506591",
+        "elapsed_s": 0.0,
+        "status": "SUCCESS",
+        "faults": 0,
+        "tools": [],
+        "result": ""
+      }
+    ]
   }
 ]

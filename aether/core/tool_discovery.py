@@ -607,6 +607,7 @@ _SOFTWARE_PACKAGES = [
     ("sqlite3",    "SQLite3",        5),
     ("smbus2",     "smbus2",         3),
     ("serial",     "pyserial",       3),
+    ("tflite_runtime","TFLite Runtime", 5),
     ("ultralytics","Ultralytics",    5),
 ]
 

@@ -1395,7 +1395,7 @@ _LEVEL_ACTIONS: Dict[int, List[str]] = {
         "report_surroundings", "detect_color",
         # Extended camera actions (always available at level 1+)
         "estimate_distance", "detect_objects", "capture_image",
-        "yolo_detect", "describe_scene", "count_objects",
+        "yolo_detect", "describe_scene", "count_objects", "count_fingers",
     ],
     LEVEL_MOTOR: [
         "navigate_to_color", "avoid_obstacle", "follow_object",
@@ -1593,9 +1593,10 @@ class NavigationEngine:
             yolo_map = {
                 "yolo_detect": lambda: yolo.detect(
                     params.get("image_path", "")),
-                "describe_scene": lambda: yolo.describe_scene(),
+                "describe_scene": lambda: yolo.describe_scene(**params),
                 "count_objects": lambda: yolo.count_objects(
                     params.get("class_name", "")),
+                "count_fingers": lambda: yolo.count_fingers(**params),
             }
             if action in yolo_map:
                 return yolo_map[action]()

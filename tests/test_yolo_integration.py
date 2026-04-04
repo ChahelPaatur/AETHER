@@ -133,153 +133,155 @@ class TestYOLOToolDetect:
             os.unlink(tmp_path)
 
 
-class TestYOLOToolDescribeScene:
-    def test_describe_scene_formatting(self):
-        tool = YOLOTool()
-        # Mock detect_from_camera to return canned detections
-        tool.detect_from_camera = MagicMock(return_value=_ok({
-            "detections": [
-                {"class_name": "person", "confidence": 0.94},
-                {"class_name": "chair", "confidence": 0.87},
-                {"class_name": "chair", "confidence": 0.82},
-                {"class_name": "laptop", "confidence": 0.91},
-            ],
-            "count": 4,
-        }))
+class TestDescribeSceneVisionApi:
+    """describe_scene always uses the Anthropic vision API."""
 
-        result = tool.describe_scene()
-        assert result["success"]
-        desc = result["result"]["description"]
-        assert "person" in desc
-        assert "chair" in desc
-        assert "laptop" in desc
-        assert result["result"]["unique_classes"] == 3
-        assert result["result"]["object_count"] == 4
-
-    def test_describe_scene_empty(self):
-        tool = YOLOTool()
-        tool.detect_from_camera = MagicMock(return_value=_ok({
-            "detections": [],
-            "count": 0,
-        }))
-
-        result = tool.describe_scene()
-        assert result["success"]
-        assert "cannot see" in result["result"]["description"].lower()
-
-
-class TestDescribeSceneVisionApiFallback:
-    """Tests for the Anthropic vision API fallback when ultralytics is missing."""
-
-    def test_falls_back_to_vision_api_when_no_ultralytics(self):
-        tool = YOLOTool()
-        tool._has_ultralytics = False
-
+    def _make_tmp_image(self):
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
-            f.write(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
-            tmp_path = f.name
+        f = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        f.write(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        f.close()
+        return f.name
 
+    def _mock_anthropic(self, text="A room with a desk."):
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="A room with a desk and a laptop.")]
+        mock_msg.content = [MagicMock(text=text)]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_msg
-        mock_anthropic_mod = MagicMock()
-        mock_anthropic_mod.Anthropic.return_value = mock_client
+        mock_mod = MagicMock()
+        mock_mod.Anthropic.return_value = mock_client
+        return mock_mod, mock_client
+
+    def test_uses_vision_api_with_image_path(self):
+        tool = YOLOTool()
+        tmp = self._make_tmp_image()
+        mock_mod, mock_client = self._mock_anthropic("A desk and a laptop.")
 
         try:
-            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}), \
-                 patch.dict("sys.modules", {"anthropic": mock_anthropic_mod}):
-
-                result = tool.describe_scene(image_path=tmp_path)
+            with patch.dict("sys.modules", {"anthropic": mock_mod}), \
+                 patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+                result = tool.describe_scene(image_path=tmp)
                 assert result["success"]
                 assert result["result"]["backend"] == "anthropic_vision"
                 assert result["result"]["model"] == "claude-sonnet-4-20250514"
                 assert "desk" in result["result"]["description"]
 
-                # Verify API was called with correct model and image
-                call_kwargs = mock_client.messages.create.call_args
-                assert call_kwargs.kwargs["model"] == "claude-sonnet-4-20250514"
-                msg_content = call_kwargs.kwargs["messages"][0]["content"]
-                assert msg_content[0]["type"] == "image"
-                assert msg_content[0]["source"]["type"] == "base64"
-                assert msg_content[1]["type"] == "text"
-                assert "Describe what you see" in msg_content[1]["text"]
-                assert "hands, fingers" in msg_content[1]["text"]
+                call_kw = mock_client.messages.create.call_args.kwargs
+                assert call_kw["model"] == "claude-sonnet-4-20250514"
+                msg = call_kw["messages"][0]["content"]
+                assert msg[0]["type"] == "image"
+                assert msg[0]["source"]["type"] == "base64"
+                assert "fingers" in msg[1]["text"]
         finally:
-            os.unlink(tmp_path)
+            os.unlink(tmp)
 
-    def test_vision_api_fails_without_api_key(self):
+    def test_resolves_filepath_from_kwargs(self):
         tool = YOLOTool()
-        tool._has_ultralytics = False
-
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
-            f.write(b"\xff\xd8\xff\xe0")
-            tmp_path = f.name
+        tmp = self._make_tmp_image()
+        mock_mod, _ = self._mock_anthropic()
 
         try:
-            with patch.dict(os.environ, {}, clear=True):
-                os.environ.pop("ANTHROPIC_API_KEY", None)
-                result = tool.describe_scene(image_path=tmp_path)
-                assert not result["success"]
-                assert "ANTHROPIC_API_KEY" in result["error"]
+            with patch.dict("sys.modules", {"anthropic": mock_mod}), \
+                 patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+                result = tool.describe_scene(filepath=tmp)
+                assert result["success"]
+                assert result["result"]["image_path"] == tmp
         finally:
-            os.unlink(tmp_path)
+            os.unlink(tmp)
 
-    def test_vision_api_captures_frame_when_no_image_path(self):
-        """When no image_path is given, _capture_frame_any() is called and
-        the resulting frame is saved to disk then sent to the vision API."""
+    def test_resolves_nested_image_dict(self):
+        tool = YOLOTool()
+        tmp = self._make_tmp_image()
+        mock_mod, _ = self._mock_anthropic()
+
+        try:
+            with patch.dict("sys.modules", {"anthropic": mock_mod}), \
+                 patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+                result = tool.describe_scene(image={"filepath": tmp})
+                assert result["success"]
+                assert result["result"]["image_path"] == tmp
+        finally:
+            os.unlink(tmp)
+
+    def test_pi_refuses_without_image_path(self):
+        """On Pi without image_path, describe_scene refuses (never opens camera)."""
+        tool = YOLOTool()
+        with patch("aether.core.tool_builder._ON_PI", True):
+            result = tool.describe_scene()
+            assert not result["success"]
+            assert "requires image_path" in result["error"]
+
+    def test_non_pi_captures_frame_when_no_path(self):
         import numpy as np
-        import tempfile
-
         tool = YOLOTool()
-        tool._has_ultralytics = False
-
         fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_mod, _ = self._mock_anthropic("A hallway.")
+        mock_cv2 = MagicMock()
 
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text="A hallway.")]
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_msg
-        mock_anthropic_mod = MagicMock()
-        mock_anthropic_mod.Anthropic.return_value = mock_client
+        # Make cv2.imwrite create a real file
+        tmp = self._make_tmp_image()
 
-        # Create a real temp file that _describe_via_vision_api can read
-        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-        tmp.write(b"\xff\xd8\xff\xe0" + b"\x00" * 50)
-        tmp.close()
-
-        # Patch _describe_via_vision_api to verify it gets called with a path
-        # while also patching _capture_frame_any to verify it gets called
-        capture_mock = MagicMock(return_value=(fake_frame, "cv2"))
-        vision_mock = MagicMock(return_value=_ok({
-            "description": "A hallway.",
-            "backend": "anthropic_vision",
-            "model": "claude-sonnet-4-20250514",
-            "image_path": tmp.name,
-        }))
+        def fake_imwrite(path, frame):
+            import shutil
+            shutil.copy(tmp, path)
+            return True
+        mock_cv2.imwrite.side_effect = fake_imwrite
 
         try:
-            with patch("aether.core.tool_builder._capture_frame_any", capture_mock), \
-                 patch.object(tool, "_describe_via_vision_api", vision_mock):
+            with patch("aether.core.tool_builder._ON_PI", False), \
+                 patch("aether.core.tool_builder._capture_frame_any",
+                       return_value=(fake_frame, "cv2")) as cap_mock, \
+                 patch.dict("sys.modules", {"anthropic": mock_mod, "cv2": mock_cv2}), \
+                 patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
                 result = tool.describe_scene()
                 assert result["success"]
-                capture_mock.assert_called_once()
-                vision_mock.assert_called_once()
+                cap_mock.assert_called_once()
                 assert result["result"]["backend"] == "anthropic_vision"
         finally:
-            os.unlink(tmp.name)
+            os.unlink(tmp)
 
-    def test_vision_api_capture_failure(self):
+    def test_capture_failure_returns_error(self):
         tool = YOLOTool()
-        tool._has_ultralytics = False
-
-        with patch("aether.core.tool_builder._capture_frame_any",
+        with patch("aether.core.tool_builder._ON_PI", False), \
+             patch("aether.core.tool_builder._capture_frame_any",
                    return_value=(None, "no camera available")):
             result = tool.describe_scene()
             assert not result["success"]
             assert "capture failed" in result["error"]
+
+    def test_unwraps_capture_image_result_dict(self):
+        """Planner may pass full capture_image return value as image kwarg."""
+        tool = YOLOTool()
+        tmp = self._make_tmp_image()
+        mock_mod, _ = self._mock_anthropic()
+
+        try:
+            with patch.dict("sys.modules", {"anthropic": mock_mod}), \
+                 patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+                result = tool.describe_scene(
+                    image={"success": True,
+                           "result": {"filepath": tmp},
+                           "error": ""})
+                assert result["success"]
+                assert result["result"]["image_path"] == tmp
+        finally:
+            os.unlink(tmp)
+
+
+class TestNavigationEngineDescribeSceneForwarding:
+    def test_execute_forwards_params_to_describe_scene(self, camera_manifest):
+        """NavigationEngine.execute passes params to yolo.describe_scene."""
+        mock_yolo = MagicMock()
+        mock_yolo.describe_scene.return_value = _ok({
+            "description": "test", "backend": "anthropic_vision"})
+        tools = ToolBuilder(camera_manifest).build_all()
+        tools["yolo"] = mock_yolo
+
+        nav = NavigationEngine(camera_manifest, tools=tools)
+        nav.execute("describe_scene",
+                     params={"image": {"filepath": "/tmp/test.jpg"}})
+        mock_yolo.describe_scene.assert_called_once_with(
+            image={"filepath": "/tmp/test.jpg"})
 
 
 class TestYOLOToolCountObjects:

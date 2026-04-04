@@ -20,6 +20,7 @@ import logging
 import os
 import shutil
 import socket
+import threading
 import time
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -53,48 +54,36 @@ def _is_raspberry_pi() -> bool:
 _IS_PI = _is_raspberry_pi()
 _ON_PI = _IS_PI  # alias used by other modules
 
-# ── Singleton picamera2 instance — stays open across all captures ─────
+# ── Picamera2 thread lock — fresh instance per capture ────────────────
 
-_picam_instance = None
-
-
-def _get_picamera():
-    """Return the module-level picamera2 singleton, creating it if needed."""
-    global _picam_instance
-    if _picam_instance is None:
-        from picamera2 import Picamera2
-        _picam_instance = Picamera2()
-        config = _picam_instance.create_still_configuration(
-            main={"size": (1920, 1080), "format": "RGB888"}
-        )
-        _picam_instance.configure(config)
-        _picam_instance.start()
-        time.sleep(0.5)
-    return _picam_instance
+_picam_lock = threading.Lock()
 
 
 def _capture_frame_any():
     """Capture a frame from whatever camera is available.
 
     Returns (frame_ndarray, backend_name_or_error).
-    On Pi uses the picamera2 singleton; elsewhere tries cv2.
+    On Pi creates a fresh Picamera2 instance each time (under lock) to
+    avoid singleton corruption ('Camera in Running state' / allocator errors).
+    Elsewhere tries cv2.
     """
     if _ON_PI:
-        try:
-            global _picam_instance
-            picam = _get_picamera()
-            frame = picam.capture_array()
-            return frame[:, :, :3], "picamera2"
-        except Exception as e:
-            # Reset singleton on error so next call retries
+        with _picam_lock:
             try:
-                if _picam_instance:
-                    _picam_instance.stop()
-                    _picam_instance.close()
-            except Exception:
-                pass
-            _picam_instance = None
-            return None, f"picamera2 failed: {e}"
+                from picamera2 import Picamera2
+                cam = Picamera2()
+                config = cam.create_still_configuration(
+                    main={"size": (1920, 1080), "format": "RGB888"}
+                )
+                cam.configure(config)
+                cam.start()
+                time.sleep(0.3)
+                frame = cam.capture_array()
+                cam.stop()
+                cam.close()
+                return frame[:, :, :3], "picamera2"
+            except Exception as e:
+                return None, f"picamera2 failed: {e}"
     else:
         try:
             import cv2
@@ -578,11 +567,20 @@ class YOLOTool:
         except Exception as e:
             return _err(str(e))
 
-    def _describe_via_vision_api(self, image_path: str) -> Dict:
+    def _describe_via_vision_api(self, image_path: str,
+                                query: str = "") -> Dict:
         """Describe a scene using the Anthropic vision API (fallback).
 
         Used when ultralytics/YOLO is not available (e.g. Raspberry Pi).
         Sends the image to claude-sonnet-4-20250514 with vision capability.
+
+        Parameters
+        ----------
+        image_path : str
+            Path to the image file.
+        query : str, optional
+            If provided, used as the text prompt instead of the default.
+            Used by ``count_fingers`` for targeted finger-counting prompts.
         """
         import base64
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -603,6 +601,11 @@ class YOLOTool:
         with open(image_path, "rb") as f:
             image_data = base64.standard_b64encode(f.read()).decode("utf-8")
 
+        prompt_text = query if query else (
+            "Describe what you see in this image in detail. "
+            "Include people, objects, hands, fingers, text, "
+            "colors, and positions.")
+
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
@@ -621,9 +624,7 @@ class YOLOTool:
                     },
                     {
                         "type": "text",
-                        "text": ("Describe what you see in this image in detail. "
-                                 "Include people, objects, hands, fingers, text, "
-                                 "colors, and positions."),
+                        "text": prompt_text,
                     },
                 ],
             }],
@@ -636,90 +637,129 @@ class YOLOTool:
             "image_path": image_path,
         })
 
-    def describe_scene(self, image_path: str = "", **kwargs) -> Dict:
-        """Describe everything visible in a scene.
+    def describe_scene(self, image_path="", **kwargs) -> Dict:
+        """Describe everything visible using the Anthropic vision API.
 
-        When ultralytics is available, uses YOLOv8 for local detection.
-        When ultralytics is missing (e.g. Raspberry Pi), falls back to
-        the Anthropic vision API (claude-sonnet-4-20250514).
+        Always uses claude-sonnet-4-20250514 for rich scene understanding
+        (people, fingers, objects, text, colours, spatial layout).
+
+        Extracts filepath from string or dict args FIRST — before any
+        camera code runs.  On Raspberry Pi the camera is NEVER opened;
+        a filepath from a prior ``capture_image`` call is required.
 
         Parameters
         ----------
-        image_path : str, optional
-            Path to an image file.  If provided, that image is used;
-            otherwise a fresh frame is captured from the camera.
-            Also accepted as ``filepath`` or ``image`` in kwargs (the LLM
-            planner often passes the output of capture_image this way).
+        image_path : str or dict
+            Path to image, or a dict from ``capture_image`` containing
+            ``filepath`` / ``image_path``.
+        query : str, optional (via kwargs)
+            Custom prompt for the vision API.  When the query mentions
+            fingers, an explicit finger-counting prompt is used instead
+            of the default scene description.
         """
+        # ── 0. Extract path from string or dict FIRST ─────────────
+        def _get_path(v):
+            if isinstance(v, str) and v:
+                return v
+            if isinstance(v, dict):
+                fp = v.get("filepath") or v.get("image_path") or ""
+                if fp:
+                    return fp
+                r = v.get("result")
+                if isinstance(r, dict):
+                    return r.get("filepath") or r.get("image_path") or ""
+            return ""
+
+        image_path = (_get_path(image_path)
+                      or _get_path(kwargs.get("image", ""))
+                      or _get_path(kwargs.get("filepath", ""))
+                      or _get_path(kwargs.get("image_path", "")))
+
+        # ── 0b. Resolve query / detect finger-counting intent ─────
+        query = kwargs.get("query", "")
+        _FINGER_KEYWORDS = ("finger", "fingers", "how many fingers",
+                            "count fingers", "count_fingers")
+        if query and any(kw in query.lower() for kw in _FINGER_KEYWORDS):
+            query = ("Count exactly how many fingers are being held up "
+                     "in this image. Just respond with a number.")
+
+        # ── 1. If we have a valid path, use vision API directly ───
+        if image_path and os.path.exists(str(image_path)):
+            return self._describe_via_vision_api(str(image_path),
+                                                 query=query)
+
+        # ── 2. On Pi — NEVER open camera, require filepath ────────
+        if _ON_PI:
+            return _err("describe_scene requires image_path on Pi — "
+                        "call capture_image first")
+
+        # ── 3. Non-Pi — capture fresh frame as last resort ────────
+        frame, backend = _capture_frame_any()
+        if frame is None:
+            return _err(f"capture failed: {backend}")
         try:
-            # Accept image_path / filepath / image from kwargs
-            image_path = (image_path
-                          or kwargs.get("filepath", "")
-                          or kwargs.get("image_path", "")
-                          or kwargs.get("image", ""))
-
-            # ── Fallback: no ultralytics → use Anthropic vision API ──
-            if not self._has_ultralytics:
-                if not image_path or not os.path.exists(str(image_path)):
-                    # Use _capture_frame_any() directly — on Pi this uses
-                    # the picamera2 singleton which is proven to work,
-                    # avoiding the "device busy" issue with _capture_frame().
-                    frame, backend = _capture_frame_any()
-                    if frame is None:
-                        return _err(f"no ultralytics and capture failed: {backend}")
-                    try:
-                        import cv2
-                        cap_dir = os.path.join("logs", "captures")
-                        os.makedirs(cap_dir, exist_ok=True)
-                        image_path = os.path.join(
-                            cap_dir,
-                            f"describe_{int(time.time() * 1000)}.jpg",
-                        )
-                        cv2.imwrite(image_path, frame)
-                    except Exception as e:
-                        return _err(f"failed to save captured frame: {e}")
-                return self._describe_via_vision_api(image_path)
-
-            # ── Primary: YOLOv8 local detection ──────────────────────
-            if image_path and os.path.exists(image_path):
-                det_result = self.detect(image_path)
-            else:
-                det_result = self.detect_from_camera()
-            if not det_result.get("success"):
-                return det_result
-
-            detections = det_result["result"]["detections"]
-            if not detections:
-                return _ok({"description": "I cannot see any recognizable objects.",
-                            "detections": []})
-
-            # Group by class name
-            groups: Dict[str, list] = {}
-            for d in detections:
-                name = d["class_name"]
-                groups.setdefault(name, []).append(d["confidence"])
-
-            # Build description string
-            parts = []
-            for name, confs in sorted(groups.items(),
-                                       key=lambda x: max(x[1]), reverse=True):
-                count = len(confs)
-                conf_strs = ", ".join(f"{c*100:.0f}%" for c in sorted(confs, reverse=True))
-                if count == 1:
-                    parts.append(f"1 {name} ({conf_strs} confident)")
-                else:
-                    parts.append(f"{count} {name}s ({conf_strs})")
-
-            description = "I can see: " + ", ".join(parts)
-            return _ok({
-                "description": description,
-                "backend": "yolov8",
-                "detections": detections,
-                "object_count": len(detections),
-                "unique_classes": len(groups),
-            })
+            import cv2
+            cap_dir = os.path.join("logs", "captures")
+            os.makedirs(cap_dir, exist_ok=True)
+            tmp = os.path.join(
+                cap_dir,
+                f"describe_{int(time.time() * 1000)}.jpg",
+            )
+            if backend == "picamera2":
+                frame = frame[:, :, ::-1]
+            cv2.imwrite(tmp, frame)
         except Exception as e:
-            return _err(str(e))
+            return _err(f"failed to save captured frame: {e}")
+
+        return self._describe_via_vision_api(tmp, query=query)
+
+    def count_fingers(self, image_path="", **kwargs) -> Dict:
+        """Count fingers held up in an image using Anthropic vision API.
+
+        Routes through ``describe_scene`` with a targeted finger-counting
+        prompt.  YOLO/count_objects cannot detect fingers — this method
+        uses the vision API which can.
+
+        Returns {finger_count, raw_response, image_path, backend, model}.
+        """
+        # ── Extract path exactly like describe_scene ──────────────
+        def _get_path(v):
+            if isinstance(v, str) and v:
+                return v
+            if isinstance(v, dict):
+                fp = v.get("filepath") or v.get("image_path") or ""
+                if fp:
+                    return fp
+                r = v.get("result")
+                if isinstance(r, dict):
+                    return r.get("filepath") or r.get("image_path") or ""
+            return ""
+
+        image_path = (_get_path(image_path)
+                      or _get_path(kwargs.get("image", ""))
+                      or _get_path(kwargs.get("filepath", ""))
+                      or _get_path(kwargs.get("image_path", "")))
+
+        finger_query = ("Count exactly how many fingers are being held up "
+                        "in this image. Just respond with a number.")
+        result = self.describe_scene(
+            image_path=image_path, query=finger_query)
+        if not result.get("success"):
+            return result
+
+        # Parse the number from the vision API response
+        raw = result["result"]["description"].strip()
+        import re
+        numbers = re.findall(r'\d+', raw)
+        finger_count = int(numbers[0]) if numbers else -1
+
+        return _ok({
+            "finger_count": finger_count,
+            "raw_response": raw,
+            "image_path": result["result"].get("image_path", image_path),
+            "backend": "anthropic_vision",
+            "model": "claude-sonnet-4-20250514",
+        })
 
 
 # ── SystemTool ────────────────────────────────────────────────────────
@@ -1327,6 +1367,173 @@ class MotorTool:
                      "detail": "no motor controller — command logged"})
 
 
+# ── TFLiteTool (lightweight Pi-friendly object detection) ─────────────
+
+_TFLITE_MODEL_URL = (
+    "https://storage.googleapis.com/download.tensorflow.org/models/"
+    "tflite/coco_ssd_mobilenet_v1_1.0_quant_2018_06_29.zip"
+)
+_TFLITE_MODEL_DIR = os.path.join("models", "tflite")
+_TFLITE_MODEL_PATH = os.path.join(_TFLITE_MODEL_DIR, "detect.tflite")
+_TFLITE_LABELS_PATH = os.path.join(_TFLITE_MODEL_DIR, "labelmap.txt")
+
+# COCO SSD MobileNet v1 labels (91 classes, index 0 = background)
+_COCO_LABELS = [
+    "background", "person", "bicycle", "car", "motorcycle", "airplane",
+    "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "",
+    "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse",
+    "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "", "backpack",
+    "umbrella", "", "", "handbag", "tie", "suitcase", "frisbee", "skis",
+    "snowboard", "sports ball", "kite", "baseball bat", "baseball glove",
+    "skateboard", "surfboard", "tennis racket", "bottle", "", "wine glass",
+    "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich",
+    "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake",
+    "chair", "couch", "potted plant", "bed", "", "dining table", "", "",
+    "toilet", "", "tv", "laptop", "mouse", "remote", "keyboard",
+    "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
+    "", "book", "clock", "vase", "scissors", "teddy bear", "hair drier",
+    "toothbrush",
+]
+
+
+class TFLiteTool:
+    """Lightweight object detection using TFLite MobileNet-SSD.
+
+    Designed for Raspberry Pi where PyTorch / YOLO are too heavy.
+    Uses tflite-runtime for fast CPU inference (~100-200ms per frame).
+
+    Methods:
+        detect(image_path) — run MobileNet-SSD on an image, return detections
+    """
+
+    def __init__(self, camera_tool: Optional["CameraTool"] = None):
+        self._interpreter = None
+        self._camera = camera_tool
+        self._labels = list(_COCO_LABELS)
+
+    def _ensure_model(self):
+        """Download model if missing, then load interpreter."""
+        if self._interpreter is not None:
+            return None
+        # Download model zip if not present
+        if not os.path.exists(_TFLITE_MODEL_PATH):
+            try:
+                os.makedirs(_TFLITE_MODEL_DIR, exist_ok=True)
+                import urllib.request
+                import zipfile
+                zip_path = os.path.join(_TFLITE_MODEL_DIR, "model.zip")
+                urllib.request.urlretrieve(_TFLITE_MODEL_URL, zip_path)
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    zf.extractall(_TFLITE_MODEL_DIR)
+                os.remove(zip_path)
+                # The zip contains detect.tflite and labelmap.txt
+            except Exception as e:
+                return f"model download failed: {e}"
+        # Load labels if file exists
+        if os.path.exists(_TFLITE_LABELS_PATH):
+            try:
+                with open(_TFLITE_LABELS_PATH, "r") as f:
+                    lines = [line.strip() for line in f if line.strip()]
+                    if lines:
+                        self._labels = lines
+            except Exception:
+                pass
+        # Load interpreter
+        try:
+            from tflite_runtime.interpreter import Interpreter
+            self._interpreter = Interpreter(model_path=_TFLITE_MODEL_PATH)
+            self._interpreter.allocate_tensors()
+            return None
+        except Exception as e:
+            return f"TFLite init failed: {e}"
+
+    def detect(self, image_path: str = "", **kwargs) -> Dict:
+        """Run MobileNet-SSD on an image. Returns detections with bounding boxes.
+
+        Parameters
+        ----------
+        image_path : str, optional
+            Path to an image file. Falls back to camera capture if empty.
+        """
+        try:
+            image_path = (image_path
+                          or kwargs.get("filepath", "")
+                          or kwargs.get("image_path", "")
+                          or kwargs.get("image", ""))
+            # Extract path from dict if needed
+            if isinstance(image_path, dict):
+                image_path = (image_path.get("filepath")
+                              or image_path.get("image_path") or "")
+                r = image_path if isinstance(image_path, str) else ""
+                if not r and isinstance(image_path, dict):
+                    rr = image_path.get("result", {})
+                    r = rr.get("filepath", "") if isinstance(rr, dict) else ""
+                image_path = r
+
+            err = self._ensure_model()
+            if err:
+                return _err(err)
+
+            # Capture if no path
+            if not image_path or not os.path.exists(str(image_path)):
+                if self._camera is not None:
+                    cap_result = self._camera.capture_image()
+                    if not cap_result.get("success"):
+                        return _err(cap_result.get("error", "capture failed"))
+                    image_path = cap_result["result"]["filepath"]
+                else:
+                    return _err("no image_path and no camera available")
+
+            # Load and preprocess image
+            from PIL import Image
+            img = Image.open(str(image_path)).convert("RGB")
+            input_details = self._interpreter.get_input_details()
+            output_details = self._interpreter.get_output_details()
+            h, w = input_details[0]["shape"][1], input_details[0]["shape"][2]
+            img_resized = img.resize((w, h))
+            input_data = np.expand_dims(np.array(img_resized, dtype=np.uint8), axis=0)
+
+            # Run inference
+            self._interpreter.set_tensor(input_details[0]["index"], input_data)
+            self._interpreter.invoke()
+
+            # Parse outputs: boxes, classes, scores, count
+            boxes = self._interpreter.get_tensor(output_details[0]["index"])[0]
+            classes = self._interpreter.get_tensor(output_details[1]["index"])[0]
+            scores = self._interpreter.get_tensor(output_details[2]["index"])[0]
+            count = int(self._interpreter.get_tensor(output_details[3]["index"])[0])
+
+            orig_w, orig_h = img.size
+            detections = []
+            for i in range(min(count, 10)):
+                score = float(scores[i])
+                if score < 0.4:
+                    continue
+                cls_id = int(classes[i])
+                label = (self._labels[cls_id]
+                         if cls_id < len(self._labels) else f"class_{cls_id}")
+                ymin, xmin, ymax, xmax = boxes[i]
+                detections.append({
+                    "class_name": label,
+                    "confidence": round(score, 3),
+                    "bounding_box": {
+                        "x1": int(xmin * orig_w),
+                        "y1": int(ymin * orig_h),
+                        "x2": int(xmax * orig_w),
+                        "y2": int(ymax * orig_h),
+                    },
+                })
+
+            return _ok({
+                "detections": detections,
+                "count": len(detections),
+                "model": "mobilenet_ssd_v1_quant",
+                "image_path": str(image_path),
+            })
+        except Exception as e:
+            return _err(str(e))
+
+
 # ── ToolBuilder ───────────────────────────────────────────────────────
 
 class ToolBuilder:
@@ -1371,6 +1578,11 @@ class ToolBuilder:
         if sw.get("ultralytics", False) or "camera" in tools:
             cam = tools.get("camera")
             tools["yolo"] = YOLOTool(camera_tool=cam)
+
+        # TFLiteTool — lightweight detection for Pi (no PyTorch needed)
+        if sw.get("tflite_runtime", False):
+            cam = tools.get("camera")
+            tools["tflite"] = TFLiteTool(camera_tool=cam)
 
         # MotorTool — always (falls back to simulation logging)
         motor_ctrls = self._manifest.get("motor_controllers", [])
