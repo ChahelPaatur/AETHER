@@ -54,6 +54,19 @@ def _is_raspberry_pi() -> bool:
 _IS_PI = _is_raspberry_pi()
 _ON_PI = _IS_PI  # alias used by other modules
 
+
+def _extract_image_path(val) -> str:
+    if isinstance(val, str) and val: return val
+    if isinstance(val, dict):
+        for key in ('filepath','image_path','path','image','file'):
+            v = val.get(key)
+            if isinstance(v, str) and v: return v
+            if isinstance(v, dict):
+                for k2 in ('filepath','image_path','path'):
+                    v2 = v.get(k2)
+                    if isinstance(v2, str) and v2: return v2
+    return ''
+
 # ── Picamera2 thread lock — fresh instance per capture ────────────────
 
 _picam_lock = threading.Lock()
@@ -208,14 +221,11 @@ class CameraTool:
         return frame, None
 
     def _grab_frame_picamera2(self):
-        err = self._ensure_picamera()
-        if err:
-            return None, err
-        try:
-            frame = self._picam.capture_array()
-            return frame, None
-        except Exception as e:
-            return None, f"picamera2 capture failed: {e}"
+        # Always use _capture_frame_any() — avoids double Picamera2 conflict
+        frame, backend = _capture_frame_any()
+        if frame is None:
+            return None, backend
+        return frame, None
 
     def _save_frame(self, frame, prefix="frame") -> str:
         """Save a numpy frame to disk as JPEG. Returns filepath.
@@ -313,12 +323,17 @@ class CameraTool:
         except Exception as e:
             return _err(str(e))
 
-    def detect_color(self, color_name: str = "red") -> Dict:
+    def detect_color(self, color_name: str = "red", **kwargs) -> Dict:
         """Return percentage of frame matching named color.
 
         Uses cv2 HSV when available; falls back to simple RGB thresholding.
         """
         try:
+            # Extract image path if provided
+            image_path = _extract_image_path(
+                kwargs.get("image_path","") or kwargs.get("image","") or
+                kwargs.get("filepath","") or kwargs.get("path",""))
+
             # RGB threshold ranges (simpler, works without cv2)
             rgb_ranges = {
                 "red":    {"min": (150, 0, 0), "max": (255, 100, 100)},
@@ -330,7 +345,14 @@ class CameraTool:
                 return _err(f"unknown color '{color_name}', "
                             f"supported: {', '.join(rgb_ranges)}")
 
-            frame, err = self._grab_frame()
+            if image_path and os.path.exists(str(image_path)):
+                import cv2 as _cv2_load
+                frame = _cv2_load.imread(str(image_path))
+                if frame is None:
+                    return _err(f"could not read image: {image_path}")
+                err = None
+            else:
+                frame, err = self._grab_frame()
             if err:
                 return _err(err)
 
