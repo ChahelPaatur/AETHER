@@ -1691,7 +1691,40 @@ class OLEDTool:
         return self.clear()
 
     def display_text(self, text: str = "", font_size: int = 12,
-                     x: int = 0, y: int = 0, clear: bool = True) -> Dict:
+                     x: int = 0, y: int = 0, clear: bool = True, **kwargs) -> Dict:
+        # Parse string-repr dict or extract from dict
+        if isinstance(text, str) and text.strip().startswith('{'):
+            try:
+                import ast
+                text = ast.literal_eval(text)
+            except:
+                pass
+        if isinstance(text, dict):
+            # Try clean text fields first
+            extracted = (text.get('content') or text.get('body') or
+                        text.get('description') or text.get('result') or
+                        text.get('summary') or text.get('text'))
+            if extracted:
+                text = str(extracted)
+            else:
+                # Build human readable from weather-like dicts
+                parts = []
+                GOOD_KEYS = {'temp_C','temp_F','FeelsLikeC','FeelsLikeF',
+                             'weatherDesc','humidity','windspeedKmph','observation_time'}
+                def extract_readable(d, depth=0):
+                    if depth > 3: return
+                    if isinstance(d, dict):
+                        for k, v in d.items():
+                            if k in GOOD_KEYS and isinstance(v, (str,int,float)):
+                                parts.append(f"{k}:{v}")
+                            elif isinstance(v, (dict,list)):
+                                extract_readable(v, depth+1)
+                    elif isinstance(d, list):
+                        for item in d[:2]:
+                            extract_readable(item, depth+1)
+                extract_readable(text)
+                text = ' '.join(parts[:6]) if parts else str(text)[:80]
+        text = str(text)[:120]
         if self._Image is None:
             return _err("PIL not available")
         img = self._new_image() if clear else self._new_image()
