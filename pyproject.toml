@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aether-robotics"
-version = "3.2.8"
+version = "3.2.9"
 description = "Autonomous multi-agent robotics system with DRL-First Hybrid FDIR"
 readme = "README.md"
 license = {text = "MIT"}
