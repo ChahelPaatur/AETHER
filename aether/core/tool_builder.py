@@ -1724,7 +1724,12 @@ class OLEDTool:
                             extract_readable(item, depth+1)
                 extract_readable(text)
                 text = ' '.join(parts[:6]) if parts else str(text)[:80]
-        text = str(text)[:120]
+        # Strip emoji and non-ASCII for OLED bitmap font
+        import re
+        text = str(text)
+        text = text.encode('ascii', 'ignore').decode('ascii')
+        text = re.sub(r'[^\x20-\x7E]', '', text).strip()
+        text = text[:120]
         if self._Image is None:
             return _err("PIL not available")
         img = self._new_image() if clear else self._new_image()
