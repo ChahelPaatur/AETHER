@@ -777,10 +777,7 @@ class YOLOTool:
 
         return _ok({
             "finger_count": finger_count,
-            "raw_response": raw,
-            "image_path": result["result"].get("image_path", image_path),
-            "backend": "anthropic_vision",
-            "model": "claude-sonnet-4-20250514",
+            "raw_response": str(finger_count),
         })
 
 
@@ -1869,6 +1866,26 @@ class OLEDTool:
 
     def show_value(self, label: str = "", value: Any = "",
                    unit: str = "") -> Dict:
+        # Extract clean value from dict or string-repr of dict
+        if isinstance(value, str) and value.startswith('{'):
+            try:
+                import ast
+                value = ast.literal_eval(value)
+            except:
+                pass
+        if isinstance(value, dict):
+            SKIP = {'image_path','filepath','path','file','raw_response','backend','tag','mode','resolution','timestamp'}
+            for key in ('finger_count','count','cpu_temp_c','cpu_percent','ram_percent','brightness','percentage','total','result'):
+                if key in value:
+                    value = value[key]
+                    break
+            else:
+                for k, v in value.items():
+                    if k not in SKIP and isinstance(v, (int, float)):
+                        value = v
+                        break
+                else:
+                    value = '?'
         if self._Image is None:
             return _err("PIL not available")
         img = self._new_image()
