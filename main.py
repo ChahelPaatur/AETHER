@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import sys
+import threading
 import time
 
 from typing import Any, Dict, List, Optional
@@ -31,6 +32,62 @@ def silence_http_logging() -> None:
     logging.getLogger("anthropic").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+# ── Companion Mode Config ──────────────────────────────────────────────
+CONFIG_PATH = os.path.expanduser('~/.aether/config.json')
+
+
+def load_config():
+    try:
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_config(cfg):
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    with open(CONFIG_PATH, 'w') as f:
+        json.dump(cfg, f, indent=2)
+
+
+def _idle_animation(oled, stop_event):
+    """Idle face: arrow-eyes bouncing up and down, smile mouth."""
+    try:
+        Image = oled._Image
+        ImageDraw = oled._ImageDraw
+    except AttributeError:
+        return
+    if Image is None or ImageDraw is None:
+        return
+    positions = [0, -2, -4, -2, 0, 2, 4, 2]
+    i = 0
+    while not stop_event.is_set():
+        offset = positions[i % len(positions)]
+        image = Image.new('1', (128, 64), 0)
+        draw = ImageDraw.Draw(image)
+
+        eye_base_y = 28 + offset
+        lx, rx = 32, 96
+        # Left eye — upward arrow bouncing
+        draw.polygon([(lx, eye_base_y - 10),
+                      (lx - 8, eye_base_y + 4),
+                      (lx + 8, eye_base_y + 4)], fill=1)
+        draw.rectangle([lx - 4, eye_base_y + 4, lx + 4, eye_base_y + 10], fill=1)
+        # Right eye same
+        draw.polygon([(rx, eye_base_y - 10),
+                      (rx - 8, eye_base_y + 4),
+                      (rx + 8, eye_base_y + 4)], fill=1)
+        draw.rectangle([rx - 4, eye_base_y + 4, rx + 4, eye_base_y + 10], fill=1)
+
+        # Smile mouth
+        draw.arc([44, 48, 84, 62], 0, 180, fill=1, width=2)
+
+        oled._push_raw(image) if hasattr(oled, '_push_raw') else oled._push(image, tag="idle")
+        if stop_event.wait(0.12):
+            break
+        i += 1
 
 
 def run_sim(args) -> None:
@@ -391,6 +448,32 @@ def run_agent(args) -> None:
         discovery.manifest["calibrated_actions"] = [a["name"] for a in cal_actions]
         discovery.manifest["robot_purpose"] = calibration_profile.get("robot_purpose", "")
 
+    # ── Step 6c: Companion Mode (OLED) ────────────────────────────────
+    oled_hw = discovery.manifest.get("hardware", {}).get("oled", {})
+    oled_available = bool(oled_hw.get("available", False))
+    companion_config = load_config()
+    companion_mode = companion_config.get("companion_mode", False)
+
+    if oled_available and not companion_config.get("companion_mode_set"):
+        print("\n  [OLED] Display detected — AETHER can run in Companion Mode.")
+        print("  Companion Mode: animated face expressions, idle animations,")
+        print("  and emotional responses during every objective.\n")
+        try:
+            choice = input("  Enable Companion Mode? [Y/n]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            choice = 'n'
+        companion_mode = choice != 'n'
+        companion_config['companion_mode'] = companion_mode
+        companion_config['companion_mode_set'] = True
+        save_config(companion_config)
+        if companion_mode:
+            print("  [OLED] Companion Mode enabled — AETHER is alive!\n")
+        else:
+            print("  [OLED] Companion Mode disabled — display available for data only.\n")
+
+    # oled_tool will be set after ToolBuilder runs (see below)
+    oled_tool = None
+
     registry = ToolRegistry()
     parser = GoalParser()
     planner = Planner()
@@ -399,6 +482,11 @@ def run_agent(args) -> None:
     builder = ToolBuilder(discovery.manifest)
     built_tools = builder.build_all()
     _print_activity("TOOLS", builder.build_summary())
+
+    # Grab OLED tool reference for companion mode
+    oled_tool = built_tools.get("oled")
+    if companion_mode and oled_tool:
+        oled_tool.show_startup()
 
     nav_engine = NavigationEngine(discovery.manifest, tools=built_tools)
     nav_actions = nav_engine.available_actions()
@@ -492,11 +580,30 @@ def run_agent(args) -> None:
     total_actions = 0
 
     while True:
+        # Start idle animation while waiting for input
+        _stop_idle = None
+        _idle_thread = None
+        if companion_mode and oled_tool:
+            _stop_idle = threading.Event()
+            _idle_thread = threading.Thread(
+                target=_idle_animation, args=(oled_tool, _stop_idle), daemon=True)
+            _idle_thread.start()
+
         try:
             objective = input("objective> ").strip()
         except (EOFError, KeyboardInterrupt):
+            if _stop_idle:
+                _stop_idle.set()
             print("\nExiting agent mode.")
             break
+        finally:
+            # Stop idle immediately when user types
+            if _stop_idle:
+                _stop_idle.set()
+            if _idle_thread:
+                _idle_thread.join(timeout=0.5)
+            if companion_mode and oled_tool:
+                oled_tool.draw_face('neutral')
 
         if not objective or objective.lower() in ("quit", "exit", "q"):
             print("Exiting agent mode.")
@@ -508,6 +615,9 @@ def run_agent(args) -> None:
             continue
 
         _obj_start_time = time.time()
+        # Companion: thinking face before planning
+        if companion_mode and oled_tool:
+            oled_tool.draw_face('thinking')
         _print_activity("GOAL", f"Parsing objective: {objective}")
 
         # Use GoalParser for structure, but fall back to raw text for agent-mode planning
@@ -550,6 +660,10 @@ def run_agent(args) -> None:
             plan = _build_agent_plan(parsed, available, recent_memory)
             plan_source = "keyword"
         _print_activity("PLAN", f"[{plan_source}] {' → '.join(a['tool'] for a in plan)}")
+
+        # Companion: blink after plan received
+        if companion_mode and oled_tool:
+            oled_tool.animate_blink(1)
 
         print(f"\n  --- Executing {len(plan)} action(s) ---")
         step_faults = 0
@@ -635,6 +749,9 @@ def run_agent(args) -> None:
                     sim_accumulator.append(("timeout", params.get("scenario", "?"), result.output))
                 prev_output = result.output
             else:
+                # Companion: speaking face after successful action
+                if companion_mode and oled_tool:
+                    oled_tool.draw_face('speaking')
                 summary = _summarize_output(result.output)
                 label = "KNOWLEDGE" if (tool_name == "web_search"
                                         and str(result.output).startswith("[KNOWLEDGE]")) else "OK"
@@ -679,6 +796,17 @@ def run_agent(args) -> None:
                 step_faults += 1
                 faults_detected += 1
                 _print_fault_alert("TASK_FAILURE", f"write_file failed: {wr_result.error}")
+
+        # Companion: happy or alert face after objective
+        if companion_mode and oled_tool:
+            if step_faults == 0:
+                oled_tool.draw_face('happy')
+                time.sleep(0.8)
+                oled_tool.draw_face('neutral')
+            else:
+                oled_tool.draw_face('alert')
+                time.sleep(0.8)
+                oled_tool.draw_face('neutral')
 
         # Episode summary
         outcome = "SUCCESS" if step_faults == 0 else "DEGRADED"
