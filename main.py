@@ -617,6 +617,7 @@ def run_agent(args) -> None:
         _obj_start_time = time.time()
         # Companion: thinking face before planning
         if companion_mode and oled_tool:
+            import time as _t; _t.sleep(0.1)
             oled_tool.draw_face('thinking')
         _print_activity("GOAL", f"Parsing objective: {objective}")
 
@@ -798,8 +799,11 @@ def run_agent(args) -> None:
                 _print_fault_alert("TASK_FAILURE", f"write_file failed: {wr_result.error}")
 
         # Companion: happy or alert face after objective
+        # Only show alert on real failures (not normal corrections)
         if companion_mode and oled_tool:
-            if step_faults == 0:
+            outcome_status = "SUCCESS" if step_faults == 0 else "DEGRADED"
+            real_failure = outcome_status == "DEGRADED" and step_faults > 1
+            if not real_failure:
                 oled_tool.draw_face('happy')
                 time.sleep(0.8)
                 oled_tool.draw_face('neutral')

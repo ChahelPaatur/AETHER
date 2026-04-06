@@ -1700,30 +1700,19 @@ class OLEDTool:
             except:
                 pass
         if isinstance(text, dict):
-            # Try clean text fields first
-            extracted = (text.get('content') or text.get('body') or
+            SENSOR_KEYS = ('cpu_temp_c','cpu_percent','ram_percent','brightness',
+                           'finger_count','percentage','temp','temperature')
+            found = False
+            for key in SENSOR_KEYS:
+                if key in text:
+                    text = f"{key.replace('_',' ').title()}: {text[key]}"
+                    found = True
+                    break
+            if not found:
+                text = (text.get('content') or text.get('body') or
                         text.get('description') or text.get('result') or
-                        text.get('summary') or text.get('text'))
-            if extracted:
-                text = str(extracted)
-            else:
-                # Build human readable from weather-like dicts
-                parts = []
-                GOOD_KEYS = {'temp_C','temp_F','FeelsLikeC','FeelsLikeF',
-                             'weatherDesc','humidity','windspeedKmph','observation_time'}
-                def extract_readable(d, depth=0):
-                    if depth > 3: return
-                    if isinstance(d, dict):
-                        for k, v in d.items():
-                            if k in GOOD_KEYS and isinstance(v, (str,int,float)):
-                                parts.append(f"{k}:{v}")
-                            elif isinstance(v, (dict,list)):
-                                extract_readable(v, depth+1)
-                    elif isinstance(d, list):
-                        for item in d[:2]:
-                            extract_readable(item, depth+1)
-                extract_readable(text)
-                text = ' '.join(parts[:6]) if parts else str(text)[:80]
+                        text.get('summary') or text.get('text') or
+                        str(list(text.values())[0]))
         # Strip emoji and non-ASCII for OLED bitmap font
         import re
         text = str(text)
@@ -1905,12 +1894,19 @@ class OLEDTool:
     def show_value(self, label: str = "", value: Any = "",
                    unit: str = "") -> Dict:
         # Extract clean value from dict or string-repr of dict
-        if isinstance(value, str) and value.startswith('{'):
+        if isinstance(value, str) and value.strip().startswith('{'):
             try:
                 import ast
-                value = ast.literal_eval(value)
+                value = ast.literal_eval(value.strip())
             except:
                 pass
+        # Also handle string like "{'cpu_temp_c': 45.3, ...}"
+        if isinstance(value, str) and 'cpu_temp_c' in value:
+            try:
+                import re
+                m = re.search(r"cpu_temp_c.?\s*:\s*([\d.]+)", value)
+                if m: value = float(m.group(1))
+            except: pass
         if isinstance(value, dict):
             SKIP = {'image_path','filepath','path','file','raw_response','backend','tag','mode','resolution','timestamp'}
             for key in ('finger_count','count','cpu_temp_c','cpu_percent','ram_percent','brightness','percentage','total','result'):
