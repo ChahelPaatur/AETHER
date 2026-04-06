@@ -160,6 +160,43 @@ def _probe_imu_i2c_dev() -> Tuple[bool, Dict]:
     return False, {"detail": "/dev/i2c-1 not found"}
 
 
+def _probe_oled() -> Tuple[bool, Dict]:
+    """Detect SPI-based SSD1306/SSD1309 OLED on Raspberry Pi.
+
+    Checks /dev/spidev0.0 or /dev/spidev0.1 for SPI availability,
+    then verifies luma.oled can be imported.
+    Returns a three-state result:
+      - available=True: SPI device exists AND luma.oled importable
+      - spi_ready=True but available=False: SPI ok, library missing
+      - spi_ready=False: SPI interface not enabled
+    """
+    base_info = {
+        "interface": "spi",
+        "type": "SSD1306",
+        "resolution": "128x64",
+        "pins": {"DC": 25, "RST": 24, "port": 0, "device": 0},
+    }
+
+    # Check SPI device nodes
+    spi_ready = (os.path.exists("/dev/spidev0.0")
+                 or os.path.exists("/dev/spidev0.1"))
+
+    if not spi_ready:
+        return False, {**base_info, "spi_ready": False,
+                       "spi_not_enabled": True,
+                       "detail": "SPI not enabled"}
+
+    # SPI device exists — check if luma.oled is importable
+    try:
+        from luma.oled.device import ssd1306 as _  # noqa: F401
+        return True, {**base_info, "spi_ready": True,
+                      "spi_not_enabled": False}
+    except ImportError:
+        return False, {**base_info, "spi_ready": True,
+                       "spi_not_enabled": False,
+                       "detail": "luma.oled not installed"}
+
+
 # ── Motor Controller Detection ────────────────────────────────────────
 #
 # Priority order: MAVLink FC → PCA9685 I2C → GPIO direct → ROS → USB
@@ -609,6 +646,8 @@ _SOFTWARE_PACKAGES = [
     ("serial",     "pyserial",       3),
     ("tflite_runtime","TFLite Runtime", 5),
     ("ultralytics","Ultralytics",    5),
+    ("PIL",        "Pillow",         4),
+    ("luma.oled",  "luma.oled",      3),
 ]
 
 
@@ -747,6 +786,10 @@ _CAPABILITY_ACTION_MAP: Dict[str, List[str]] = {
     "microphone":       ["audio_capture"],
     "speaker":          ["audio_playback"],
     "display":          ["display_render"],
+    "oled_ssd1306":     ["display_text", "draw_face", "animate_blink",
+                         "animate_speaking", "draw_eyes", "show_value",
+                         "scroll_text", "clear_oled", "display_image",
+                         "show_animation", "show_startup"],
     "gpu":              ["drl_inference", "gpu_compute"],
     "storage":          ["file_ops"],
     # Software → actions
@@ -779,7 +822,7 @@ _PROBE_WEIGHTS: Dict[str, int] = {
     "gpio": 8, "gpiozero": 5, "i2c": 5,
     "mavlink": 8, "dronekit": 5,
     "imu_mpu6050": 6, "i2c_imu": 3,
-    "microphone": 4, "speaker": 3, "display": 3,
+    "microphone": 4, "speaker": 3, "display": 3, "oled_ssd1306": 5,
     "storage": 5, "gpu": 8,
     "internet": 10, "local_network": 3,
     "numpy": 12, "anthropic": 12, "psutil": 8, "torch": 8,
@@ -901,6 +944,11 @@ class ToolDiscovery:
             else:
                 hw["imu"] = {"available": False}
                 self._record("imu_mpu6050", False, imu_info, CAT_HARDWARE)
+
+        # OLED display (SPI SSD1306/SSD1309)
+        oled_ok, oled_info = _probe_oled()
+        hw["oled"] = {"available": oled_ok, **oled_info}
+        self._record("oled_ssd1306", oled_ok, oled_info, CAT_HARDWARE)
 
         # Motor controller auto-detection (replaces simple mavlink probe)
         motor_controllers = _detect_motor_controllers(self._serial_ports)
@@ -1132,7 +1180,7 @@ class ToolDiscovery:
         # Hardware
         print(f"\n  Hardware:")
         hw_order = ["camera", "gpio", "i2c", "imu", "mavlink",
-                    "audio", "display", "storage", "gpu"]
+                    "audio", "display", "oled", "storage", "gpu"]
         for key in hw_order:
             info = self._hardware.get(key, {})
             avail = info.get("available", False)
@@ -1150,8 +1198,19 @@ class ToolDiscovery:
                     detail = f"{info.get('free_gb', '?')}GB free / {info.get('total_gb', '?')}GB"
                 if key == "gpu":
                     detail = info.get("device", info.get("type", ""))
+                if key == "oled":
+                    iface = info.get("interface", "spi").upper()
+                    detail = f"{hw_type} {resolution} {iface}"
             else:
-                detail = info.get("detail", "not detected")
+                if key == "oled":
+                    if info.get("spi_not_enabled"):
+                        detail = "SPI not enabled"
+                    elif info.get("spi_ready"):
+                        detail = "library not installed"
+                    else:
+                        detail = info.get("detail", "not detected")
+                else:
+                    detail = info.get("detail", "not detected")
             print(f"    [{icon}] {key:<14} {status:<6} {detail}")
 
         # Software
@@ -1206,6 +1265,14 @@ class ToolDiscovery:
         if unavail:
             print(f"    Unavailable: {', '.join(unavail[:10])}"
                   + ("..." if len(unavail) > 10 else ""))
+
+        # OLED SPI warning if on Pi with SPI disabled
+        oled_hw = self._hardware.get("oled", {})
+        if oled_hw.get("spi_not_enabled"):
+            print(f"\n  [OLED] SPI interface not enabled.")
+            print(f"  [OLED] To enable: sudo raspi-config → "
+                  f"Interface Options → SPI → Enable → Reboot")
+            print(f"  [OLED] Then reconnect and OLED will auto-configure.")
 
         # Score bar
         score = self._score

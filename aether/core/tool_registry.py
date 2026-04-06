@@ -846,6 +846,19 @@ def register_built_tools(registry: "ToolRegistry",
             ("count_objects", "Count objects of a given class via YOLO detection"),
             ("describe_scene", "Describe everything visible (YOLO or Anthropic vision API)"),
         ],
+        "oled": [
+            ("display_text", "Display text on OLED (auto-wraps long text)"),
+            ("display_image", "Display an image file on OLED (auto-resized to 128x64)"),
+            ("clear_oled", "Clear the OLED screen"),
+            ("show_animation", "Play a list of image frames on OLED at given fps"),
+            ("draw_face", "Draw a robot face expression on OLED (neutral, happy, thinking, alert, sleeping, speaking)"),
+            ("draw_eyes", "Draw animated eyes on OLED (open, closed, squint, wide, wink_left, wink_right)"),
+            ("animate_blink", "Blink eyes N times on OLED"),
+            ("animate_speaking", "Animate mouth opening/closing for N seconds"),
+            ("scroll_text", "Scroll text across the OLED from right to left"),
+            ("show_value", "Display a large centered value with label and unit"),
+            ("show_startup", "Play OLED startup animation with AETHER logo"),
+        ],
         # storage methods overlap with existing ReadFileTool/WriteFileTool,
         # so we skip them to avoid name collisions
     }
@@ -880,6 +893,7 @@ def register_built_tools(registry: "ToolRegistry",
                     "i2c": hw.get("i2c", {}),
                     "imu": hw.get("imu", {}),
                     "mavlink": hw.get("mavlink", {}),
+                    "oled": hw.get("oled", {}),
                     "serial_ports": hw.get("serial_ports", []),
                 },
                 "software": {k: v for k, v in sw.items()},
@@ -899,6 +913,8 @@ def register_built_tools(registry: "ToolRegistry",
                 missing.append("IMU sensor (would enable: accelerometer, gyroscope, orientation)")
             if not hw.get("i2c", {}).get("available"):
                 missing.append("I2C bus (would enable: external sensors, OLED displays)")
+            if not hw.get("oled", {}).get("available"):
+                missing.append("OLED display at I2C 0x3C/0x3D (would enable: on-device text, robot face, status readouts)")
             if not hw.get("gpu", {}).get("available"):
                 missing.append("CUDA/MPS GPU (would enable: fast inference, ML training)")
             if not net.get("internet"):

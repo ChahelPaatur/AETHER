@@ -468,6 +468,15 @@ def run_agent(args) -> None:
     built_tools = builder.build_all()
     _print_activity("TOOLS", builder.build_summary())
 
+    # OLED startup animation (only on Pi with real hardware attached)
+    oled_tool = built_tools.get("oled")
+    if oled_tool is not None and getattr(oled_tool, "mode", "sim") == "real":
+        try:
+            oled_tool.show_startup()
+            _print_activity("OLED", "Startup animation played on hardware")
+        except Exception as e:
+            _print_activity("OLED", f"startup animation failed: {e}")
+
     nav_engine = NavigationEngine(discovery.manifest, tools=built_tools)
     nav_actions = nav_engine.available_actions()
     _print_activity("NAV", f"Level {nav_engine.level} ({nav_engine.level_name}) — "
@@ -621,6 +630,12 @@ def run_agent(args) -> None:
         if hints:
             _print_activity("MEM", "Found similar past objectives")
 
+        if oled_tool is not None:
+            try:
+                oled_tool.draw_face("thinking")
+            except Exception:
+                pass
+
         if llm_planner.available:
             _print_activity("PLAN", "Sending to LLM planner...")
             # Prepend planning hints to memory context
@@ -714,6 +729,11 @@ def run_agent(args) -> None:
             if not result.success:
                 step_faults += 1
                 faults_detected += 1
+                if oled_tool is not None:
+                    try:
+                        oled_tool.draw_face("alert")
+                    except Exception:
+                        pass
                 _print_fault_alert("TASK_FAILURE",
                                    f"{tool_name} failed: {result.error} "
                                    f"({result.duration_ms:.0f}ms)")
@@ -728,6 +748,11 @@ def run_agent(args) -> None:
                     sim_accumulator.append(("timeout", params.get("scenario", "?"), result.output))
                 prev_output = result.output
             else:
+                if oled_tool is not None:
+                    try:
+                        oled_tool.draw_face("speaking")
+                    except Exception:
+                        pass
                 summary = _summarize_output(result.output)
                 label = "KNOWLEDGE" if (tool_name == "web_search"
                                         and str(result.output).startswith("[KNOWLEDGE]")) else "OK"
@@ -778,6 +803,19 @@ def run_agent(args) -> None:
 
         # Episode summary
         outcome = "SUCCESS" if step_faults == 0 else "DEGRADED"
+
+        # Auto-expression on OLED: happy on success, alert on faults
+        if oled_tool is not None:
+            try:
+                if step_faults == 0:
+                    oled_tool.draw_face("happy")
+                    time.sleep(0.5)
+                    oled_tool.draw_face("neutral")
+                else:
+                    oled_tool.draw_face("alert")
+            except Exception:
+                pass
+
         print(f"\n  --- Objective Complete ---")
         print(f"  Actions:  {len(plan)}")
         print(f"  Faults:   {step_faults}")

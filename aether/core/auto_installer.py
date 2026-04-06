@@ -32,6 +32,7 @@ INSTALL_MAP = {
     "anthropic": "anthropic",
     "psutil": "psutil",
     "PIL": "Pillow",
+    "luma.oled": "luma.oled",
 }
 
 # What each library enables
@@ -52,6 +53,7 @@ CAPABILITY_MAP = {
     "anthropic": "Anthropic API (LLM planner)",
     "psutil": "system monitoring",
     "PIL": "image processing",
+    "luma.oled": "SSD1306 OLED display output",
 }
 
 
@@ -116,6 +118,57 @@ class AutoInstaller:
                 pass
         return int(installed / total * 100) if total > 0 else 0
 
+    def _auto_install_oled(self) -> bool:
+        """Auto-install OLED libraries when SPI device detected but luma.oled missing.
+
+        Called before the general install prompt. When the Pi has
+        /dev/spidev0.x it means the user configured SPI for a display,
+        so we install without asking.
+
+        Returns True if anything was installed.
+        """
+        hw = self._manifest.get("hardware", {})
+        oled = hw.get("oled", {})
+        if not oled.get("spi_ready") or oled.get("available"):
+            return False
+
+        # luma.oled not importable — install it
+        try:
+            importlib.import_module("luma.oled")
+            return False  # already importable
+        except ImportError:
+            pass
+
+        print("[AutoInstaller] SPI device detected — installing OLED libraries...")
+
+        # apt dependencies (best-effort, may need sudo)
+        if self._is_linux:
+            apt_pkgs = ["python3-pil", "python3-dev", "python3-smbus",
+                        "libfreetype6-dev", "libjpeg-dev", "libopenjp2-7"]
+            try:
+                print(f"  Installing: {', '.join(apt_pkgs)} (apt)...",
+                      end=" ", flush=True)
+                subprocess.run(
+                    ["sudo", "apt-get", "install", "-y"] + apt_pkgs,
+                    capture_output=True, text=True, timeout=120)
+                print("OK")
+            except (subprocess.TimeoutExpired, OSError, FileNotFoundError):
+                print("SKIPPED (sudo not available)")
+
+        # pip install luma.oled (pulls Pillow as dependency)
+        installed = False
+        for pkg in ("luma.oled", "Pillow"):
+            print(f"  Installing: {pkg} (pip)...", end=" ", flush=True)
+            if self._pip_install(pkg):
+                print("OK")
+                installed = True
+            else:
+                print("FAILED")
+
+        if installed:
+            print("[AutoInstaller] OLED display ready")
+        return installed
+
     def run(self, auto_install: bool = False, no_install: bool = False) -> bool:
         """Run the auto-installer flow.
 
@@ -127,8 +180,11 @@ class AutoInstaller:
         Returns:
             True if any packages were installed.
         """
+        # Auto-install OLED libs when SPI is ready (always, before skip check)
+        oled_installed = self._auto_install_oled()
+
         if no_install or self._skip_session or _load_skip_pref():
-            return False
+            return oled_installed
 
         missing = self.check_missing()
         if not missing:

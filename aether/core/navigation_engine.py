@@ -1426,6 +1426,13 @@ _IMU_ACTIONS = [
     "get_orientation", "detect_vibration",
 ]
 
+# OLED display actions (added when OLED hardware detected)
+_OLED_ACTIONS = [
+    "display_text", "display_image", "clear_oled", "show_animation",
+    "draw_face", "draw_eyes", "animate_blink", "animate_speaking",
+    "scroll_text", "show_value", "show_startup",
+]
+
 
 class NavigationEngine:
     """
@@ -1513,10 +1520,19 @@ class NavigationEngine:
         actions = list(_SYSTEM_ACTIONS)
         if self._imu.available:
             actions.extend(_IMU_ACTIONS)
+        if self._has_oled():
+            actions.extend(_OLED_ACTIONS)
         for lvl in range(1, self._level + 1):
             actions.extend(_LEVEL_ACTIONS.get(lvl, []))
         actions.append("observe")
         return sorted(set(actions))
+
+    def _has_oled(self) -> bool:
+        hw_oled = self._manifest.get("hardware", {}).get("oled", {})
+        if hw_oled.get("available"):
+            return True
+        # sim-mode OLEDTool built when PIL is installed
+        return "oled" in self._tools
 
     def execute(self, action: str, params: Optional[Dict] = None):
         """Execute a navigation action by name.
@@ -1600,6 +1616,17 @@ class NavigationEngine:
             }
             if action in yolo_map:
                 return yolo_map[action]()
+
+        # OLED actions (level 1+ when oled tool available)
+        oled = self._tools.get("oled")
+        if oled and action in _OLED_ACTIONS:
+            fn = getattr(oled, action, None)
+            if fn is not None:
+                try:
+                    return fn(**params)
+                except TypeError as e:
+                    return _err(f"bad params for {action}: {e}")
+            return _err(f"oled has no method '{action}'")
 
         # Level 2: Motor
         if self._motors:

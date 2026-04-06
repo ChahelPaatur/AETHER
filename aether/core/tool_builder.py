@@ -1556,6 +1556,356 @@ class TFLiteTool:
             return _err(str(e))
 
 
+# ── OLEDTool ──────────────────────────────────────────────────────────
+
+_OLED_SIM_DIR = os.path.join("logs", "oled_sim")
+_OLED_W = 128
+_OLED_H = 64
+
+_FACE_DEFS = {
+    "neutral":  {"eyes": "open",    "mouth": "flat"},
+    "happy":    {"eyes": "open",    "mouth": "smile"},
+    "thinking": {"eyes": "squint",  "mouth": "flat"},
+    "alert":    {"eyes": "wide",    "mouth": "open"},
+    "sleeping": {"eyes": "closed",  "mouth": "flat"},
+    "speaking": {"eyes": "open",    "mouth": "open"},
+}
+
+
+class OLEDTool:
+    """Controls an SSD1306/SSD1309 128x64 SPI OLED display (with simulation fallback).
+
+    Modes:
+      - real: luma.oled SSD1306 driver on SPI (DC=GPIO25, RST=GPIO24, CE0)
+      - sim: renders frames to PNG files under logs/oled_sim/ for review
+    """
+
+    def __init__(self, spi_port: int = 0, spi_device: int = 0,
+                 gpio_dc: int = 25, gpio_rst: int = 24,
+                 width: int = _OLED_W, height: int = _OLED_H,
+                 force_sim: bool = False):
+        self._width = width
+        self._height = height
+        self._spi_port = spi_port
+        self._spi_device = spi_device
+        self._gpio_dc = gpio_dc
+        self._gpio_rst = gpio_rst
+        self._mode = "sim"
+        self._device = None
+        self._Image = None
+        self._ImageDraw = None
+        self._ImageFont = None
+        self._frame_counter = 0
+
+        # PIL is required for both real and sim modes
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            self._Image = Image
+            self._ImageDraw = ImageDraw
+            self._ImageFont = ImageFont
+        except ImportError:
+            self._Image = None
+
+        if not force_sim and _ON_PI and self._Image is not None:
+            try:
+                from luma.core.interface.serial import spi
+                from luma.oled.device import ssd1306
+                serial = spi(port=spi_port, device=spi_device,
+                             gpio_DC=gpio_dc, gpio_RST=gpio_rst)
+                self._device = ssd1306(serial, width=width, height=height)
+                self._mode = "real"
+            except Exception:
+                self._device = None
+                self._mode = "sim"
+
+        if self._mode == "sim":
+            try:
+                os.makedirs(_OLED_SIM_DIR, exist_ok=True)
+            except OSError:
+                pass
+
+    @property
+    def mode(self) -> str:
+        return self._mode
+
+    # ── Internal rendering helpers ─────────────────────────────────
+
+    def _new_image(self):
+        return self._Image.new("1", (self._width, self._height), 0)
+
+    def _font(self, size: int = 12):
+        try:
+            return self._ImageFont.truetype(
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size)
+        except (OSError, IOError):
+            return self._ImageFont.load_default()
+
+    def _text_size(self, draw, text, font):
+        try:
+            l, t, r, b = draw.textbbox((0, 0), text, font=font)
+            return r - l, b - t
+        except AttributeError:
+            return draw.textsize(text, font=font)
+
+    def _wrap_text(self, draw, text, font, max_w):
+        words = text.split()
+        lines: list = []
+        current = ""
+        for w in words:
+            trial = (current + " " + w).strip()
+            tw, _ = self._text_size(draw, trial, font)
+            if tw <= max_w or not current:
+                current = trial
+            else:
+                lines.append(current)
+                current = w
+        if current:
+            lines.append(current)
+        return lines
+
+    def _push(self, img, tag: str = "frame"):
+        if self._mode == "real" and self._device is not None:
+            try:
+                self._device.display(img)
+                return _ok({"mode": "real", "tag": tag})
+            except Exception as e:
+                return _err(f"oled display failed: {e}")
+        # sim mode: save PNG (scaled 4x for visibility)
+        try:
+            self._frame_counter += 1
+            fname = f"{tag}_{self._frame_counter:04d}.png"
+            path = os.path.join(_OLED_SIM_DIR, fname)
+            big = img.resize((self._width * 4, self._height * 4),
+                             self._Image.NEAREST)
+            big.convert("L").save(path)
+            return _ok({"mode": "sim", "path": path, "tag": tag})
+        except Exception as e:
+            return _err(f"oled sim save failed: {e}")
+
+    # ── Public methods ─────────────────────────────────────────────
+
+    def clear(self) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        img = self._new_image()
+        return self._push(img, tag="clear")
+
+    def clear_oled(self) -> Dict:
+        return self.clear()
+
+    def display_text(self, text: str = "", font_size: int = 12,
+                     x: int = 0, y: int = 0, clear: bool = True) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        img = self._new_image() if clear else self._new_image()
+        draw = self._ImageDraw.Draw(img)
+        font = self._font(font_size)
+        max_w = self._width - x
+        lines = self._wrap_text(draw, str(text), font, max_w)
+        line_h = font_size + 2
+        cy = y
+        for line in lines:
+            if cy + line_h > self._height:
+                break
+            draw.text((x, cy), line, fill=1, font=font)
+            cy += line_h
+        return self._push(img, tag="text")
+
+    def display_image(self, image_path: str = "") -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        path = _extract_image_path(image_path)
+        if not path or not os.path.exists(path):
+            return _err(f"image not found: {path}")
+        try:
+            src = self._Image.open(path).convert("1")
+            src = src.resize((self._width, self._height))
+            return self._push(src, tag="image")
+        except Exception as e:
+            return _err(f"load image failed: {e}")
+
+    def show_animation(self, frames: list = None, fps: int = 10) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        frames = frames or []
+        if not frames:
+            return _err("no frames provided")
+        delay = 1.0 / max(fps, 1)
+        last = None
+        for f in frames:
+            if isinstance(f, str):
+                if not os.path.exists(f):
+                    continue
+                img = self._Image.open(f).convert("1").resize(
+                    (self._width, self._height))
+            else:
+                img = f.convert("1").resize((self._width, self._height))
+            last = self._push(img, tag="anim")
+            time.sleep(delay)
+        return last or _err("no playable frames")
+
+    # ── Face drawing ───────────────────────────────────────────────
+
+    def _draw_eye_pair(self, draw, state: str):
+        """Draw both eyes. Positions: left (35,25), right (93,25)."""
+        lx, rx, ey = 35, 93, 25
+        r = 10
+        pr = 4  # pupil radius
+
+        if state == "closed":
+            draw.line((lx - r, ey, lx + r, ey), fill=1, width=3)
+            draw.line((rx - r, ey, rx + r, ey), fill=1, width=3)
+        elif state == "squint":
+            # Smaller ovals
+            draw.ellipse((lx - r, ey - 5, lx + r, ey + 5), fill=1)
+            draw.ellipse((rx - r, ey - 5, rx + r, ey + 5), fill=1)
+            draw.ellipse((lx - pr, ey - 2, lx + pr, ey + 2), fill=0)
+            draw.ellipse((rx - pr, ey - 2, rx + pr, ey + 2), fill=0)
+        elif state == "wide":
+            wr = r + 3
+            draw.ellipse((lx - wr, ey - wr, lx + wr, ey + wr), fill=1)
+            draw.ellipse((rx - wr, ey - wr, rx + wr, ey + wr), fill=1)
+            draw.ellipse((lx - 5, ey - 5, lx + 5, ey + 5), fill=0)
+            draw.ellipse((rx - 5, ey - 5, rx + 5, ey + 5), fill=0)
+        elif state == "wink_left":
+            draw.line((lx - r, ey, lx + r, ey), fill=1, width=3)
+            draw.ellipse((rx - r, ey - r, rx + r, ey + r), fill=1)
+            draw.ellipse((rx - pr, ey - pr, rx + pr, ey + pr), fill=0)
+        elif state == "wink_right":
+            draw.ellipse((lx - r, ey - r, lx + r, ey + r), fill=1)
+            draw.ellipse((lx - pr, ey - pr, lx + pr, ey + pr), fill=0)
+            draw.line((rx - r, ey, rx + r, ey), fill=1, width=3)
+        else:  # open
+            draw.ellipse((lx - r, ey - r, lx + r, ey + r), fill=1)
+            draw.ellipse((rx - r, ey - r, rx + r, ey + r), fill=1)
+            draw.ellipse((lx - pr, ey - pr, lx + pr, ey + pr), fill=0)
+            draw.ellipse((rx - pr, ey - pr, rx + pr, ey + pr), fill=0)
+
+    def _draw_mouth(self, draw, kind: str):
+        my = 52
+        if kind == "smile":
+            draw.arc((44, my - 8, 84, my + 8), 0, 180, fill=1, width=2)
+        elif kind == "open":
+            draw.ellipse((54, my - 5, 74, my + 5), outline=1, width=2)
+        elif kind == "frown":
+            draw.arc((44, my - 8, 84, my + 8), 180, 0, fill=1, width=2)
+        else:  # flat
+            draw.line((44, my, 84, my), fill=1, width=2)
+
+    def draw_face(self, expression: str = "neutral") -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        spec = _FACE_DEFS.get(expression, _FACE_DEFS["neutral"])
+        img = self._new_image()
+        draw = self._ImageDraw.Draw(img)
+        self._draw_eye_pair(draw, spec["eyes"])
+        mouth = spec["mouth"]
+        # thinking gets a frown/arc-up mouth
+        if expression == "thinking":
+            mouth = "frown"
+        self._draw_mouth(draw, mouth)
+        return self._push(img, tag=f"face_{expression}")
+
+    def draw_eyes(self, state: str = "open", blink: bool = False) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        img = self._new_image()
+        draw = self._ImageDraw.Draw(img)
+        self._draw_eye_pair(draw, "closed" if blink else state)
+        return self._push(img, tag=f"eyes_{state}")
+
+    def animate_blink(self, times: int = 2) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        last = None
+        for _ in range(max(1, int(times))):
+            # Open eyes + smile mouth
+            img = self._new_image()
+            draw = self._ImageDraw.Draw(img)
+            self._draw_eye_pair(draw, "open")
+            self._draw_mouth(draw, "smile")
+            self._push(img, tag="blink_open")
+            time.sleep(0.4)
+            # Closed eyes + smile mouth
+            img = self._new_image()
+            draw = self._ImageDraw.Draw(img)
+            self._draw_eye_pair(draw, "closed")
+            self._draw_mouth(draw, "smile")
+            last = self._push(img, tag="blink_closed")
+            time.sleep(0.15)
+        # End with neutral face
+        last = self.draw_face("neutral")
+        return last or _ok({"mode": self._mode, "blinks": times})
+
+    def animate_speaking(self, duration: float = 2.0) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        end = time.time() + max(0.2, float(duration))
+        last = None
+        while time.time() < end:
+            last = self.draw_face("speaking")
+            time.sleep(0.15)
+            last = self.draw_face("neutral")
+            time.sleep(0.15)
+        return last or _ok({"mode": self._mode, "duration": duration})
+
+    def scroll_text(self, text: str = "", speed: int = 3) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        font = self._font(16)
+        tmp = self._new_image()
+        draw = self._ImageDraw.Draw(tmp)
+        tw, th = self._text_size(draw, str(text), font)
+        y = (self._height - th) // 2
+        step_px = max(1, int(speed))
+        last = None
+        for offset in range(self._width, -tw - 1, -step_px):
+            img = self._new_image()
+            d2 = self._ImageDraw.Draw(img)
+            d2.text((offset, y), str(text), fill=1, font=font)
+            last = self._push(img, tag="scroll")
+            time.sleep(0.03)
+        return last or _ok({"mode": self._mode})
+
+    def show_value(self, label: str = "", value: Any = "",
+                   unit: str = "") -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        img = self._new_image()
+        draw = self._ImageDraw.Draw(img)
+        label_font = self._font(12)
+        value_font = self._font(28)
+        lw, lh = self._text_size(draw, str(label), label_font)
+        draw.text(((self._width - lw) // 2, 2), str(label),
+                  fill=1, font=label_font)
+        display_val = f"{value}{unit}" if unit else str(value)
+        vw, vh = self._text_size(draw, display_val, value_font)
+        draw.text(((self._width - vw) // 2,
+                   (self._height - vh) // 2 + 6),
+                  display_val, fill=1, font=value_font)
+        return self._push(img, tag="value")
+
+    def show_startup(self) -> Dict:
+        if self._Image is None:
+            return _err("PIL not available")
+        lx, rx, ey = 35, 93, 25
+        # Eyes grow open animation
+        for size in (2, 5, 8, 10):
+            img = self._new_image()
+            draw = self._ImageDraw.Draw(img)
+            draw.ellipse((lx - size, ey - size, lx + size, ey + size), fill=1)
+            draw.ellipse((rx - size, ey - size, rx + size, ey + size), fill=1)
+            self._push(img, tag=f"startup_{size}")
+            time.sleep(0.1)
+        # Happy face
+        self.draw_face("happy")
+        time.sleep(0.5)
+        # AETHER v3 text
+        self.display_text("AETHER v3", clear=True)
+        time.sleep(1.0)
+        return self.draw_face("neutral")
+
+
 # ── ToolBuilder ───────────────────────────────────────────────────────
 
 class ToolBuilder:
@@ -1605,6 +1955,19 @@ class ToolBuilder:
         if sw.get("tflite_runtime", False):
             cam = tools.get("camera")
             tools["tflite"] = TFLiteTool(camera_tool=cam)
+
+        # OLEDTool — if OLED detected OR PIL installed (sim fallback)
+        oled_info = hw.get("oled", {})
+        oled_available = bool(oled_info.get("available", False))
+        if oled_available or sw.get("PIL", False):
+            pins = oled_info.get("pins", {})
+            tools["oled"] = OLEDTool(
+                spi_port=pins.get("port", 0),
+                spi_device=pins.get("device", 0),
+                gpio_dc=pins.get("DC", 25),
+                gpio_rst=pins.get("RST", 24),
+                force_sim=not oled_available,
+            )
 
         # MotorTool — always (falls back to simulation logging)
         motor_ctrls = self._manifest.get("motor_controllers", [])
