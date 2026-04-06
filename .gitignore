@@ -43,6 +43,7 @@ logs/corrections.json
 logs/hardware_calls.json
 logs/tool_calls.json
 logs/agent_memory.json
+logs/oled_sim/
 
 # Keep benchmark files
 !logs/BENCHMARK_*.json

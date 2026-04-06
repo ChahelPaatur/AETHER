@@ -1824,9 +1824,6 @@ class OLEDTool:
         draw = self._ImageDraw.Draw(img)
         self._draw_eye_pair(draw, spec["eyes"])
         mouth = spec["mouth"]
-        # thinking gets a frown/arc-up mouth
-        if expression == "thinking":
-            mouth = "frown"
         self._draw_mouth(draw, mouth)
         return self._push(img, tag=f"face_{expression}")
 
