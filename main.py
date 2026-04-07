@@ -53,7 +53,7 @@ def save_config(cfg):
 
 
 def _idle_animation(oled, stop_event):
-    """Idle face: arrow-eyes bouncing up and down, smile mouth."""
+    """Idle face: ^^ chevron eyes bouncing up and down, smile mouth."""
     try:
         Image = oled._Image
         ImageDraw = oled._ImageDraw
@@ -68,18 +68,12 @@ def _idle_animation(oled, stop_event):
         image = Image.new('1', (128, 64), 0)
         draw = ImageDraw.Draw(image)
 
-        eye_base_y = 28 + offset
+        ey = 28 + offset
         lx, rx = 32, 96
-        # Left eye — upward arrow bouncing
-        draw.polygon([(lx, eye_base_y - 10),
-                      (lx - 8, eye_base_y + 4),
-                      (lx + 8, eye_base_y + 4)], fill=1)
-        draw.rectangle([lx - 4, eye_base_y + 4, lx + 4, eye_base_y + 10], fill=1)
-        # Right eye same
-        draw.polygon([(rx, eye_base_y - 10),
-                      (rx - 8, eye_base_y + 4),
-                      (rx + 8, eye_base_y + 4)], fill=1)
-        draw.rectangle([rx - 4, eye_base_y + 4, rx + 4, eye_base_y + 10], fill=1)
+        # Left eye — ^ chevron
+        draw.line([(lx - 8, ey + 4), (lx, ey - 6), (lx + 8, ey + 4)], fill=1, width=2)
+        # Right eye — ^ chevron
+        draw.line([(rx - 8, ey + 4), (rx, ey - 6), (rx + 8, ey + 4)], fill=1, width=2)
 
         # Smile mouth
         draw.arc([44, 48, 84, 62], 0, 180, fill=1, width=2)
@@ -574,6 +568,21 @@ def run_agent(args) -> None:
         scheduler = TaskScheduler(_sched_execute)
         scheduler.dispatch(schedule_str)
         return  # exit after scheduled run completes
+
+    # ── Single-objective mode (--once): run one objective and exit ─────
+    once_objective = getattr(args, "once", None)
+    if once_objective:
+        recent_memory = _load_agent_memory(5)
+        result = _execute_objective(
+            once_objective, registry, llm_planner, corrector,
+            parser, manifest, recent_memory, available)
+        print(f"\n  --- Objective Complete ---")
+        print(f"  STATUS:   {result['status']}")
+        print(f"  Actions:  {len(result.get('actions', []))}")
+        print(f"  Faults:   {result.get('faults', 0)}")
+        if result.get("result"):
+            print(f"  Output:   {str(result['result'])[:500]}")
+        return  # exit after single objective
 
     # Fault tracking
     faults_detected = 0
@@ -1612,16 +1621,40 @@ def run_server(args) -> None:
         server.server_close()
 
 
+def run_dashboard(args) -> None:
+    """Launch the retro terminal web dashboard."""
+    os.environ["AETHER_NO_DISPLAY"] = "1"  # skip tkinter — crashes NSWindow on Mac
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        local_ip = "localhost"
+
+    print()
+    print("  ┌─[ AETHER DASHBOARD ]─────────────────────┐")
+    print(f"  │  http://{local_ip}:5000{' ' * (24 - len(local_ip))}│")
+    print(f"  │  http://localhost:5000                    │")
+    print("  └───────────────────────────────────────────┘")
+    print()
+
+    from dashboard.app import app
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+
+
 def main():
     from aether.core.banner import print_banner
     print_banner()
 
     parser = argparse.ArgumentParser(description="AETHER v3 Agent")
     parser.add_argument("--mode", type=str, default="sim",
-                        choices=["sim", "agent", "realworld", "server"],
+                        choices=["sim", "agent", "realworld", "server", "dashboard"],
                         help="sim = simulation (default), agent = real tool execution, "
                              "realworld = live hardware with webcam + system metrics, "
-                             "server = HTTP server on --port")
+                             "server = HTTP API on --port, "
+                             "dashboard = retro web UI on port 5000")
     parser.add_argument("--port", type=int, default=8080,
                         help="Port for server mode (default: 8080)")
     parser.add_argument("--task", type=str, default="navigate to target",
@@ -1658,6 +1691,8 @@ def main():
     parser.add_argument("--schedule", type=str, default="",
                         help='Schedule format: "for Xmin: objective" or '
                              '"every Xs: objective" or "until HH:MM: objective"')
+    parser.add_argument("--once", type=str, default=None,
+                        help="Run single objective non-interactively and exit (used by dashboard)")
     args = parser.parse_args()
 
     setup_logging(args.verbose)
@@ -1689,6 +1724,8 @@ def main():
         run_realworld(args)
     elif args.mode == "server":
         run_server(args)
+    elif args.mode == "dashboard":
+        run_dashboard(args)
     else:
         run_sim(args)
 

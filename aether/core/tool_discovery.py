@@ -553,7 +553,9 @@ def _probe_audio() -> Tuple[bool, Dict]:
 
 
 def _probe_display() -> Tuple[bool, Dict]:
-    """Try tkinter (headless-safe)."""
+    """Try tkinter (headless-safe). Skipped when AETHER_NO_DISPLAY=1."""
+    if os.environ.get("AETHER_NO_DISPLAY") == "1":
+        return False, {"detail": "display detection skipped (AETHER_NO_DISPLAY)"}
     try:
         import tkinter
         # Attempt to create root — will fail if no display
